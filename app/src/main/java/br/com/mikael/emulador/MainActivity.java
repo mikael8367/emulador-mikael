@@ -27,11 +27,20 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.File;
+import java.io.InputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 public class MainActivity extends Activity {
     private static final int PICK_EXE = 41;
+    private static final int PICK_RUNTIME = 42;
     private Uri selectedUri;
     private String selectedDisplayName = "";
+    private TextView runtimeLabel;
+    private volatile Process runningProcess;
     private static final String PREFS = "mikael_emulator";
     private static final String KEY_CONTAINERS = "containers_v1";
     private static final String KEY_ACTIVE = "active_container";
@@ -120,7 +129,7 @@ public class MainActivity extends Activity {
         Button add = button("+ Criar container");
         add.setOnClickListener(v -> showContainerEditor(null)); addTop(page, add, 10);
 
-        TextView warning = text("MOTOR WINDOWS AINDA NÃO INTEGRADO\nA seleção de arquivos funciona sem container. Para executar jogos e programas EXE, ainda é necessário integrar Wine/Box64 ou outro motor compatível; o Android não executa EXE nativamente.", 13, Color.rgb(255, 220, 145), false);
+        TextView warning = text("MOTOR WINDOWS EXTERNO NECESSÁRIO\nO app agora aceita importar um pacote de runtime e encaminhar um EXE para ele. Este repositório não inclui Wine/Box64 nem uma imagem Linux; a execução só poderá ser tentada depois de importar um pacote compatível com o contrato documentado.", 13, Color.rgb(255, 220, 145), false);
         warning.setPadding(dp(14), dp(14), dp(14), dp(14));
         warning.setBackgroundColor(Color.rgb(48, 39, 22)); addTop(page, warning, 18);
         TextView footer = text("Projeto experimental • compatibilidade não garantida", 12, Color.GRAY, false);
@@ -318,6 +327,155 @@ public class MainActivity extends Activity {
         catch (Exception e) { status.setText("Não foi possível abrir o seletor de arquivos."); }
     }
 
+    private File runtimeDir() { return new File(getFilesDir(), "wine-runtime"); }
+
+    private void refreshRuntimeStatus() {
+        if (runtimeLabel == null) return;
+        File script = new File(runtimeDir(), "start-wine.sh");
+        boolean installed = script.isFile();
+        runtimeLabel.setText(installed
+                ? "Motor: pacote importado • " + runtimeDir().getAbsolutePath()
+                : "Motor: não instalado • importe um ZIP que contenha start-wine.sh");
+        runtimeLabel.setTextColor(installed ? green : muted);
+    }
+
+    private void pickRuntime() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/zip");
+        try { startActivityForResult(intent, PICK_RUNTIME); }
+        catch (Exception e) { status.setText("Não foi possível abrir o seletor do pacote de motor."); }
+    }
+
+    private void importRuntime(Uri uri) {
+        status.setText("Importando pacote do motor…");
+        new Thread(() -> {
+            File stage = new File(getFilesDir(), "wine-runtime-installing");
+            deleteTree(stage);
+            boolean ok = false;
+            String message;
+            try {
+                if (!stage.mkdirs() && !stage.isDirectory()) throw new IOException("Não foi possível criar a pasta temporária.");
+                long total = 0;
+                try (InputStream raw = getContentResolver().openInputStream(uri);
+                     ZipInputStream zip = new ZipInputStream(raw)) {
+                    if (raw == null) throw new IOException("Não foi possível ler o ZIP.");
+                    ZipEntry entry;
+                    byte[] buffer = new byte[32768];
+                    String root = stage.getCanonicalPath() + File.separator;
+                    while ((entry = zip.getNextEntry()) != null) {
+                        File out = new File(stage, entry.getName());
+                        String path = out.getCanonicalPath();
+                        if (!path.startsWith(root)) throw new IOException("O ZIP contém um caminho inválido.");
+                        if (entry.isDirectory()) {
+                            if (!out.mkdirs() && !out.isDirectory()) throw new IOException("Falha ao criar diretório do pacote.");
+                        } else {
+                            File parent = out.getParentFile();
+                            if (parent != null && !parent.isDirectory() && !parent.mkdirs()) throw new IOException("Falha ao criar diretório.");
+                            try (FileOutputStream file = new FileOutputStream(out)) {
+                                int count;
+                                while ((count = zip.read(buffer)) != -1) {
+                                    total += count;
+                                    if (total > 8L * 1024L * 1024L * 1024L) throw new IOException("O pacote descompactado excede 8 GB.");
+                                    file.write(buffer, 0, count);
+                                }
+                            }
+                        }
+                        zip.closeEntry();
+                    }
+                }
+                File script = new File(stage, "start-wine.sh");
+                if (!script.isFile()) throw new IOException("Pacote incompatível: falta start-wine.sh na raiz do ZIP.");
+                File destination = runtimeDir();
+                File backup = new File(getFilesDir(), "wine-runtime-backup");
+                deleteTree(backup);
+                if (destination.exists() && !destination.renameTo(backup)) throw new IOException("Não foi possível substituir o motor atual.");
+                if (!stage.renameTo(destination)) {
+                    if (backup.exists()) backup.renameTo(destination);
+                    throw new IOException("Não foi possível ativar o pacote importado.");
+                }
+                deleteTree(backup);
+                ok = true;
+                message = "Pacote importado. Isso valida apenas a estrutura; a execução depende do conteúdo do motor.";
+            } catch (Exception e) {
+                message = "Falha ao importar o motor: " + e.getMessage();
+                deleteTree(stage);
+            }
+            final boolean success = ok;
+            final String result = message;
+            runOnUiThread(() -> {
+                refreshRuntimeStatus();
+                status.setText(result);
+                Toast.makeText(MainActivity.this, success ? "Pacote importado" : "Importação falhou", Toast.LENGTH_LONG).show();
+            });
+        }, "runtime-import").start();
+    }
+
+    private void launchWindowsFile() {
+        File script = new File(runtimeDir(), "start-wine.sh");
+        if (!script.isFile()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Motor Windows não instalado")
+                    .setMessage("Para tentar executar um EXE sem criar container manualmente, importe um pacote de runtime compatível. O ZIP deve conter start-wine.sh na raiz; veja RUNTIME-BUNDLE.md no repositório. O app ainda não inclui Wine/Box64 por padrão.")
+                    .setPositiveButton("OK", null).show();
+            status.setText("Execução não iniciada: falta o pacote do motor.");
+            return;
+        }
+        status.setText("Preparando arquivo para o motor…");
+        new Thread(() -> {
+            File launchDir = new File(getFilesDir(), "launches");
+            if (!launchDir.exists() && !launchDir.mkdirs()) {
+                runOnUiThread(() -> status.setText("Não foi possível criar a pasta temporária."));
+                return;
+            }
+            String safeName = selectedDisplayName.replaceAll("[^A-Za-z0-9._-]", "_");
+            if (safeName.isEmpty()) safeName = "program.exe";
+            File exe = new File(launchDir, safeName);
+            try (InputStream in = getContentResolver().openInputStream(selectedUri);
+                 FileOutputStream out = new FileOutputStream(exe)) {
+                if (in == null) throw new IOException("Não foi possível ler o arquivo selecionado.");
+                byte[] buffer = new byte[32768]; int count;
+                while ((count = in.read(buffer)) != -1) out.write(buffer, 0, count);
+            } catch (Exception e) {
+                runOnUiThread(() -> status.setText("Falha ao preparar EXE: " + e.getMessage()));
+                return;
+            }
+            File prefix = new File(getFilesDir(), "wine-prefix");
+            if (!prefix.exists()) prefix.mkdirs();
+            try {
+                ProcessBuilder builder = new ProcessBuilder("/system/bin/sh", script.getAbsolutePath(),
+                        exe.getAbsolutePath(), prefix.getAbsolutePath());
+                builder.directory(runtimeDir());
+                builder.redirectErrorStream(true);
+                File log = new File(getFilesDir(), "windows-engine.log");
+                builder.redirectOutput(log);
+                builder.environment().put("MIKAEL_EXE_PATH", exe.getAbsolutePath());
+                builder.environment().put("MIKAEL_WINEPREFIX", prefix.getAbsolutePath());
+                builder.environment().put("MIKAEL_RUNTIME_DIR", runtimeDir().getAbsolutePath());
+                Process process = builder.start();
+                runningProcess = process;
+                runOnUiThread(() -> status.setText("Motor iniciado como processo. O jogo ainda não foi confirmado; log: " + log.getAbsolutePath()));
+                new Thread(() -> {
+                    try {
+                        int exitCode = process.waitFor();
+                        runOnUiThread(() -> status.setText("Processo do motor terminou (código " + exitCode + "). Consulte windows-engine.log."));
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }, "windows-engine-watch").start();
+            } catch (Exception e) {
+                runOnUiThread(() -> status.setText("Falha ao iniciar o motor: " + e.getMessage()));
+            }
+        }, "windows-engine-launch").start();
+    }
+
+    private void deleteTree(File file) {
+        if (file == null || !file.exists()) return;
+        File[] children = file.listFiles();
+        if (children != null) for (File child : children) deleteTree(child);
+        file.delete();
+    }
+
     private String queryDisplayName(Uri uri) {
         Cursor cursor = null;
         try {
@@ -357,11 +515,7 @@ public class MainActivity extends Activity {
         }
         String lower = selectedDisplayName.toLowerCase(java.util.Locale.ROOT);
         if (lower.endsWith(".exe") || lower.endsWith(".msi") || lower.endsWith(".bat") || lower.endsWith(".com")) {
-            new AlertDialog.Builder(this)
-                    .setTitle("Motor Windows necessário")
-                    .setMessage("O arquivo foi selecionado sem precisar criar um container, mas este app ainda não possui Wine/Box64 integrado. O Android não executa arquivos EXE nativamente. Para iniciar este jogo ou programa, primeiro é necessário integrar um motor compatível.")
-                    .setPositiveButton("OK", null).show();
-            status.setText("Arquivo Windows reconhecido; execução indisponível até integrar Wine/Box64.");
+            launchWindowsFile();
             return;
         }
         String mime = getContentResolver().getType(selectedUri);
@@ -388,16 +542,17 @@ public class MainActivity extends Activity {
 
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == PICK_EXE && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri != null) {
-                selectedUri = uri;
-                try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
-                catch (Exception ignored) { }
-                selectedDisplayName = queryDisplayName(uri);
-                selectedFile.setText("Arquivo: " + selectedDisplayName + "\nTipo: " + fileKind(selectedDisplayName));
-                status.setText("Selecionado sem container. Toque em Abrir arquivo selecionado para tentar abrir.");
-            }
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+        Uri uri = data.getData();
+        if (requestCode == PICK_RUNTIME) {
+            importRuntime(uri);
+        } else if (requestCode == PICK_EXE) {
+            selectedUri = uri;
+            try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+            catch (Exception ignored) { }
+            selectedDisplayName = queryDisplayName(uri);
+            selectedFile.setText("Arquivo: " + selectedDisplayName + "\nTipo: " + fileKind(selectedDisplayName));
+            status.setText("Selecionado sem container. Toque em Executar / abrir arquivo.");
         }
     }
     private int dp(int value) { return (int)(value * getResources().getDisplayMetrics().density + 0.5f); }
