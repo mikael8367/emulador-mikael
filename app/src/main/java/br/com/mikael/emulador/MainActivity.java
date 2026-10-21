@@ -97,7 +97,7 @@ public class MainActivity extends Activity {
     private ScrollView contentScroll;
     private LinearLayout bottomNav;
     private int currentTab = 0;
-    private Button[] navButtons;
+    private LinearLayout[] navItems;
 
     private void buildUi() {
         rootLayout = new LinearLayout(this);
@@ -134,18 +134,25 @@ public class MainActivity extends Activity {
         bottomNav.setPadding(dp(4), dp(5), dp(4), dp(5));
         bottomNav.setBackgroundColor(Color.rgb(13, 23, 18));
         String[] labels = {"Início", "Arquivos", "Containers", "Motores"};
-        navButtons = new Button[labels.length];
+        String[] symbols = {"⌂", "▣", "▦", "⚙"};
+        navItems = new LinearLayout[labels.length];
         for (int i = 0; i < labels.length; i++) {
             final int tab = i;
-            Button b = new Button(this);
-            b.setText(labels[i]);
-            b.setTextSize(10);
-            b.setMinHeight(dp(46));
-            b.setPadding(dp(1), 0, dp(1), 0);
-            b.setAllCaps(false);
-            b.setOnClickListener(v -> showTab(tab));
-            navButtons[i] = b;
-            bottomNav.addView(b, new LinearLayout.LayoutParams(0, dp(52), 1));
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setGravity(Gravity.CENTER);
+            item.setPadding(dp(2), dp(5), dp(2), dp(4));
+            item.setBackground(customShape(Color.TRANSPARENT, 15, Color.TRANSPARENT, 0));
+            TextView glyph = text(symbols[i], 20, muted, true);
+            glyph.setGravity(Gravity.CENTER);
+            TextView caption = text(labels[i], 10, muted, true);
+            caption.setGravity(Gravity.CENTER);
+            item.addView(glyph);
+            item.addView(caption);
+            item.setContentDescription(labels[i]);
+            item.setOnClickListener(v -> showTab(tab));
+            navItems[i] = item;
+            bottomNav.addView(item, new LinearLayout.LayoutParams(0, dp(58), 1));
         }
         rootLayout.addView(bottomNav);
         setContentView(rootLayout);
@@ -156,9 +163,15 @@ public class MainActivity extends Activity {
     private void showTab(int tab) {
         currentTab = tab;
         page.removeAllViews();
-        for (int i = 0; i < navButtons.length; i++) {
-            navButtons[i].setTextColor(i == tab ? green : muted);
-            navButtons[i].setBackgroundColor(i == tab ? Color.rgb(27, 55, 39) : Color.TRANSPARENT);
+        for (int i = 0; i < navItems.length; i++) {
+            LinearLayout item = navItems[i];
+            int color = i == tab ? green : muted;
+            item.setBackground(customShape(i == tab ? Color.rgb(27, 55, 39) : Color.TRANSPARENT,
+                    15, i == tab ? Color.rgb(45, 95, 64) : Color.TRANSPARENT, i == tab ? 1 : 0));
+            for (int j = 0; j < item.getChildCount(); j++) {
+                View child = item.getChildAt(j);
+                if (child instanceof TextView) ((TextView) child).setTextColor(color);
+            }
         }
         contentScroll.scrollTo(0, 0);
         if (tab == 0) buildHomeTab();
