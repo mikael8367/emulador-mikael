@@ -1,4 +1,4 @@
-name: Build Winlator base (integration test)
+name: Build Winlator engine APK
 
 on:
   push:
@@ -10,13 +10,20 @@ permissions:
   contents: read
 
 jobs:
-  build-winlator:
+  build-engine:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout project and linked source
+      - name: Checkout Emulador Mikael
+        uses: actions/checkout@v4
+
+      - name: Checkout full Winlator source and components
         uses: actions/checkout@v4
         with:
+          repository: brunodev85/winlator
+          ref: main
+          path: upstream-winlator
           submodules: recursive
+          fetch-depth: 1
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -26,17 +33,41 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools;platforms;android-35;build-tools;35.0.0;ndk;24.0.8215888;cmake;3.22.1'
 
-      - name: Install Android NDK and CMake
-        run: sdkmanager "ndk;24.0.8215888" "cmake;3.22.1"
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
 
-      - name: Build Winlator source APK
-        working-directory: winlator-source
+      - name: Brand engine APK
+        working-directory: upstream-winlator/app
+        run: |
+          sed -i 's/applicationId "com.winlator"/applicationId "br.com.mikael.emulador.motor"/' app/build.gradle
+          sed -i 's/<string name="app_name">Winlator<\\/string>/<string name="app_name">Emulador Mikael - Motor<\\/string>/' app/src/main/res/values/strings.xml
+          grep -q 'br.com.mikael.emulador.motor' app/build.gradle
+          grep -q 'Emulador Mikael - Motor' app/src/main/res/values/strings.xml
+
+      - name: Build real Winlator engine
+        working-directory: upstream-winlator/app
         run: ./gradlew --no-daemon assembleDebug
 
-      - name: Upload base APK for inspection
+      - name: Prepare license and source notes
+        run: |
+          mkdir -p dist
+          cp upstream-winlator/LICENSE dist/WINLATOR-LICENSE
+          cat > dist/ENGINE-INFO.txt <<'EOF'
+          Emulador Mikael - Motor
+          This APK is based on the Winlator open-source Android project.
+          Upstream source: https://github.com/brunodev85/winlator
+          License: LGPL-2.1. Review the upstream license and source before redistribution.
+          The engine's first-run component setup requires internet and enough free storage.
+          Hardware/GPU compatibility is not guaranteed; this target device uses a PowerVR GPU.
+          EOF
+          cp upstream-winlator/app/app/build/outputs/apk/debug/app-debug.apk dist/Emulador-Mikael-Motor-debug.apk
+
+      - name: Upload engine APK
         uses: actions/upload-artifact@v4
         with:
-          name: winlator-base-debug-apk
-          path: winlator-source/app/build/outputs/apk/debug/app-debug.apk
+          name: emulador-mikael-winlator-engine-apk
+          path: dist/*
           if-no-files-found: error
