@@ -84,7 +84,7 @@ jobs:
 
       - name: Build one combined APK
         working-directory: upstream-winlator/app
-        run: ./gradlew --no-daemon assembleDebug
+        run: bash ./gradlew --no-daemon assembleDebug
 
       - name: Prepare single APK artifact
         run: |
