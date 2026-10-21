@@ -1,29 +1,26 @@
-# Emulador Mikael — LAVOICE Mobile
+# Emulador Mikael — ambientes Windows e Linux no Android
 
-Projeto Android experimental para investigar a compatibilidade de jogos Windows no Android, com foco inicial no LAVOICE.
+Projeto Android experimental para investigar a execução de software de desktop no Android.
 
 ## Recursos da interface
 
 - Criar, selecionar, editar e excluir perfis de container.
-- Salvar configurações separadas para cada perfil.
-- Preferência de versão do Windows (XP legado, 7, 10 ou 11).
-- Resolução, orientação e tela cheia.
-- Limite de RAM e quantidade de threads de CPU como preferências.
-- Perfil Box64 e driver gráfico.
-- Opção de tradutor DirectX (DXVK, WineD3D ou VKD3D-Proton).
-- Preferências de áudio, controles, limite de FPS e ponteiro do mouse.
-- Opções de ESYNC e logs de depuração.
-- Campo para variáveis de ambiente e argumentos de inicialização.
-- Seletor de arquivos para localizar um executável.
+- Escolher sistema operacional/distribuição por perfil:
+  - **Windows:** 11, 10, 8.1, 7 e XP legado.
+  - **Linux:** Ubuntu, Debian, Linux Mint, Fedora, Arch Linux, Manjaro, Kali Linux, openSUSE, Alpine Linux e opção genérica para outra distribuição.
+  - **Outros:** FreeBSD, ReactOS experimental e FreeDOS.
+- Preferências por container: resolução, orientação, tela cheia, limite de RAM, threads de CPU, perfil Box64, driver gráfico, tradutor DirectX, áudio, controles, limite de FPS, ESYNC, logs, variáveis de ambiente e argumentos de inicialização.
+- Salvar configurações localmente por perfil.
+- Selecionar um arquivo executável pelo seletor do Android.
 - GitHub Actions para compilar APK de depuração.
 
 ## Limitação importante
 
-**Esses containers ainda são perfis de configuração, não ambientes Windows reais.** As configurações são armazenadas localmente, mas ainda não afetam a execução porque o motor Wine/Box64 e as camadas gráficas ainda não foram integrados. Selecionar um EXE não o executa.
+**A lista de sistemas operacionais é, por enquanto, uma seleção de perfil na interface.** O aplicativo ainda não baixa nem instala imagens de Windows, distribuições Linux ou outros sistemas. Também não cria containers reais, não inicia máquinas virtuais e não executa EXE/ELF: o motor de compatibilidade/virtualização ainda precisa ser integrado.
 
-Opções como Turnip dependem de hardware e drivers compatíveis; não são aceleradores universais. RAM, CPU, DirectX e FPS também precisam ser ligados ao motor real e não podem ser garantidos pela interface.
+Windows em ARM/PC x86, Linux ARM/x86, BSD e DOS têm requisitos diferentes. O caminho mais adequado pode ser Wine + camada de tradução para programas Windows, um ambiente Linux user-space como proot para ferramentas Linux, ou virtualização real quando houver suporte de hardware e desempenho suficiente. A seleção de um nome não instala automaticamente esse sistema.
 
-O alvo inicial de teste é um Samsung Galaxy A12 com Android 12 e GPU PowerVR. A compatibilidade com LAVOICE ou qualquer outro EXE precisa ser verificada na prática.
+O alvo inicial de teste é um Samsung Galaxy A12 com Android 12 e GPU PowerVR. Compatibilidade e desempenho dependem do motor escolhido, arquitetura do programa, bibliotecas e suporte gráfico; não há garantia de que LAVOICE ou qualquer outro executável funcione.
 
 ## Construir APK de teste
 
@@ -32,15 +29,15 @@ O alvo inicial de teste é um Samsung Galaxy A12 com Android 12 e GPU PowerVR. A
 3. Se a execução terminar com sucesso, baixe o artefato `emulador-mikael-debug-apk`.
 4. Extraia o APK do ZIP do artefato.
 
-O workflow compila a interface Android; isso não significa que o motor Windows esteja implementado.
+O workflow compila a interface Android; isso não significa que os sistemas operacionais já estejam instalados ou funcionais.
 
 ## Próximas etapas
 
-1. Compilar e testar a interface no dispositivo Android.
-2. Integrar um motor de compatibilidade Windows adequado a Android/ARM64.
-3. Implementar containers reais isolados, gerenciamento de arquivos e instalação de dependências.
-4. Conectar cada preferência ao motor e validar o LAVOICE com testes reais.
+1. Compilar e testar a interface no Android.
+2. Escolher uma arquitetura de execução apropriada para cada família de sistema.
+3. Integrar instalações e ambientes isolados, armazenamento e gestão de dependências.
+4. Testar cada ambiente e documentar as limitações reais.
 
 ## Segurança
 
-Use apenas executáveis de fontes confiáveis. Selecionar um arquivo não o executa nem verifica se é seguro.
+Instale imagens e executáveis somente de fontes confiáveis. Selecionar um arquivo não o executa nem verifica se é seguro.
