@@ -92,64 +92,152 @@ public class MainActivity extends Activity {
         return null;
     }
 
-    private void buildUi() {
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        scroll.setBackgroundColor(bg);
-        LinearLayout page = new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(dp(18), dp(24), dp(18), dp(28));
-        scroll.addView(page);
+    private LinearLayout rootLayout, page;
+    private ScrollView contentScroll;
+    private LinearLayout bottomNav;
+    private int currentTab = 0;
+    private Button[] navButtons;
 
-        page.addView(text("MIKAEL • WINDOWS ON ANDROID", 12, green, true));
-        TextView title = text("Emulador Mikael", 28, Color.WHITE, true);
-        title.setPadding(0, dp(7), 0, dp(5)); page.addView(title);
-        page.addView(text("Abra arquivos diretamente, sem precisar criar um container.", 14, muted, false));
+    private void buildUi() {
+        rootLayout = new LinearLayout(this);
+        rootLayout.setOrientation(LinearLayout.VERTICAL);
+        rootLayout.setBackgroundColor(bg);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.VERTICAL);
+        header.setPadding(dp(18), dp(14), dp(18), dp(10));
+        header.setBackgroundColor(Color.rgb(13, 23, 18));
+        header.addView(text("MIKAEL • WINDOWS ON ANDROID", 11, green, true));
+        TextView title = text("Emulador Mikael", 25, Color.WHITE, true);
+        title.setPadding(0, dp(3), 0, dp(2));
+        header.addView(title);
+        header.addView(text("Programas e jogos • interface experimental", 12, muted, false));
+        rootLayout.addView(header);
+
+        status = text("Pronto. Escolha uma aba para começar.", 12, green, false);
+        status.setPadding(dp(18), dp(8), dp(18), dp(8));
+        status.setBackgroundColor(Color.rgb(16, 27, 21));
+        rootLayout.addView(status, new LinearLayout.LayoutParams(-1, -2));
+
+        contentScroll = new ScrollView(this);
+        contentScroll.setFillViewport(true);
+        contentScroll.setBackgroundColor(bg);
+        page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(16), dp(16), dp(16), dp(22));
+        contentScroll.addView(page);
+        rootLayout.addView(contentScroll, new LinearLayout.LayoutParams(-1, 0, 1));
+
+        bottomNav = new LinearLayout(this);
+        bottomNav.setOrientation(LinearLayout.HORIZONTAL);
+        bottomNav.setPadding(dp(4), dp(5), dp(4), dp(5));
+        bottomNav.setBackgroundColor(Color.rgb(13, 23, 18));
+        String[] labels = {"Início", "Arquivos", "Containers", "Motores"};
+        navButtons = new Button[labels.length];
+        for (int i = 0; i < labels.length; i++) {
+            final int tab = i;
+            Button b = new Button(this);
+            b.setText(labels[i]);
+            b.setTextSize(10);
+            b.setMinHeight(dp(46));
+            b.setPadding(dp(1), 0, dp(1), 0);
+            b.setAllCaps(false);
+            b.setOnClickListener(v -> showTab(tab));
+            navButtons[i] = b;
+            bottomNav.addView(b, new LinearLayout.LayoutParams(0, dp(52), 1));
+        }
+        rootLayout.addView(bottomNav);
+        setContentView(rootLayout);
+        showTab(0);
+        refreshRuntimeStatus();
+    }
+
+    private void showTab(int tab) {
+        currentTab = tab;
+        page.removeAllViews();
+        for (int i = 0; i < navButtons.length; i++) {
+            navButtons[i].setTextColor(i == tab ? green : muted);
+            navButtons[i].setBackgroundColor(i == tab ? Color.rgb(27, 55, 39) : Color.TRANSPARENT);
+        }
+        contentScroll.scrollTo(0, 0);
+        if (tab == 0) buildHomeTab();
+        else if (tab == 1) buildFilesTab();
+        else if (tab == 2) buildContainersTab();
+        else buildEnginesTab();
+    }
+
+    private void buildHomeTab() {
+        TextView hero = text("Seu ambiente Windows no Android", 22, Color.WHITE, true);
+        hero.setPadding(0, 0, 0, dp(6));
+        page.addView(hero);
+        page.addView(text("Acesse rapidamente os arquivos, perfis e componentes do emulador.", 14, muted, false));
 
         TextView device = text("DISPOSITIVO\nAndroid " + Build.VERSION.RELEASE + " • API " + Build.VERSION.SDK_INT
                 + "\nArquitetura: " + Build.SUPPORTED_ABIS[0], 14, Color.WHITE, false);
-        cardStyle(device); addTop(page, device, 18);
+        cardStyle(device); addTop(page, device, 16);
 
-        TextView launchSection = text("EXECUÇÃO DIRETA • SEM CONTAINER", 13, green, true);
-        launchSection.setPadding(0, dp(22), 0, dp(8)); page.addView(launchSection);
-        page.addView(text("Selecione jogos, instaladores, documentos ou outros arquivos. O app identificará o tipo e tentará abrir formatos que o Android ou outro aplicativo instalado suporte.", 13, muted, false));
-        Button choose = button("Selecionar arquivo ou jogo");
-        choose.setOnClickListener(v -> pickExe()); addTop(page, choose, 10);
-        selectedFile = text("Nenhum arquivo selecionado", 13, muted, false); addTop(page, selectedFile, 6);
-        Button openSelected = button("Abrir arquivo selecionado");
-        openSelected.setOnClickListener(v -> openSelectedFile()); addTop(page, openSelected, 6);
-        status = text("Pronto para selecionar arquivos • sem container", 13, green, false);
-        status.setPadding(0, dp(12), 0, dp(5)); page.addView(status);
+        addTop(page, text("ACESSO RÁPIDO", 12, green, true), 22);
+        Button openFiles = button("Selecionar programa ou jogo");
+        openFiles.setOnClickListener(v -> showTab(1)); addTop(page, openFiles, 8);
+        Button manageContainers = button("Gerenciar containers");
+        manageContainers.setOnClickListener(v -> showTab(2)); addTop(page, manageContainers, 8);
+        Button manageEngines = button("Ver motores de execução");
+        manageEngines.setOnClickListener(v -> showTab(3)); addTop(page, manageEngines, 8);
 
-        TextView section = text("SEUS CONTAINERS (OPCIONAL)", 13, green, true);
-        section.setPadding(0, dp(22), 0, dp(8)); page.addView(section);
-        activeLabel = text("", 13, muted, false); page.addView(activeLabel);
+        TextView active = text("", 13, muted, false);
+        ContainerProfile profile = getActive();
+        active.setText(profile == null ? "Nenhum perfil selecionado" : "Perfil selecionado: " + profile.name
+                + "\nAs opções do perfil ainda não configuram um motor real automaticamente.");
+        cardStyle(active); addTop(page, active, 18);
+
+        TextView note = text("Nota: a interface e os perfis não significam que todo EXE seja compatível. A execução depende dos motores instalados, da arquitetura do programa e do hardware.", 12, muted, false);
+        note.setPadding(dp(12), dp(12), dp(12), dp(12));
+        note.setBackgroundColor(panel); addTop(page, note, 14);
+    }
+
+    private void buildFilesTab() {
+        page.addView(text("Arquivos e jogos", 22, Color.WHITE, true));
+        page.addView(text("Selecione um arquivo do armazenamento. O Android abrirá formatos compatíveis; EXE precisa de um runtime Windows funcional.", 13, muted, false));
+        Button choose = button("＋ Selecionar arquivo ou jogo");
+        choose.setOnClickListener(v -> pickExe()); addTop(page, choose, 14);
+        selectedFile = text("Nenhum arquivo selecionado", 14, Color.WHITE, false);
+        cardStyle(selectedFile); addTop(page, selectedFile, 10);
+        Button openSelected = button("Abrir / executar arquivo");
+        openSelected.setOnClickListener(v -> openSelectedFile()); addTop(page, openSelected, 8);
+        Button viewEngine = button("Configurar motor");
+        viewEngine.setOnClickListener(v -> showTab(3)); addTop(page, viewEngine, 8);
+    }
+
+    private void buildContainersTab() {
+        page.addView(text("Containers", 22, Color.WHITE, true));
+        page.addView(text("Organize perfis e preferências em cartões. Criar um perfil não instala nem inicia um sistema operacional.", 13, muted, false));
+        activeLabel = text("", 13, green, true);
+        addTop(page, activeLabel, 12);
         containerList = new LinearLayout(this);
-        containerList.setOrientation(LinearLayout.VERTICAL); page.addView(containerList);
-        Button add = button("+ Criar container");
-        add.setOnClickListener(v -> showContainerEditor(null)); addTop(page, add, 10);
-
-        TextView engineTitle = text("MOTORES DE EXECUÇÃO", 13, green, true);
-        engineTitle.setPadding(0, dp(22), 0, dp(8)); page.addView(engineTitle);
-        page.addView(text("O app precisa de um runtime real compilado para ARM64. Os componentes abaixo não são intercambiáveis e não vêm instalados automaticamente.", 13, muted, false));
-        runtimeLabel = text("", 13, Color.WHITE, false);
-        runtimeLabel.setPadding(dp(12), dp(12), dp(12), dp(12));
-        runtimeLabel.setBackgroundColor(panel); addTop(page, runtimeLabel, 8);
-        Button importRuntime = button("Importar pacote do motor Windows (.zip)");
-        importRuntime.setOnClickListener(v -> pickRuntime()); addTop(page, importRuntime, 8);
-        Button showEngineGuide = button("Ver motores necessários");
-        showEngineGuide.setOnClickListener(v -> new AlertDialog.Builder(this)
-                .setTitle("Componentes do runtime")
-                .setMessage("Para tentar rodar programas Windows ARM64/x86/x64, um pacote compatível pode precisar de Wine (API Windows), Box64/Box86 (tradução x86/x64 para ARM64), uma rootfs Linux e bibliotecas. Para gráficos 3D, pode precisar de Mesa/VirGL ou um backend Vulkan compatível e DXVK/VKD3D; áudio e entrada também precisam de integração.\n\nNão existe um pacote universal: Turnip é para GPUs Adreno e não deve ser selecionado como se funcionasse na PowerVR deste aparelho. O importador atual é uma ponte, não baixa nem instala esses motores sozinho.")
-                .setPositiveButton("Entendi", null).show()); addTop(page, showEngineGuide, 6);
-        TextView warning = text("AINDA NÃO EXECUTA EXE POR PADRÃO\nEste repositório ainda não inclui os binários Wine/Box64/Box86 nem uma rootfs. Importar um ZIP só instala o pacote fornecido; não garante que ele funcione. A execução real precisa ser validada no aparelho.", 13, Color.rgb(255, 220, 145), false);
-        warning.setPadding(dp(14), dp(14), dp(14), dp(14));
-        warning.setBackgroundColor(Color.rgb(48, 39, 22)); addTop(page, warning, 12);
-        TextView footer = text("Projeto experimental • compatibilidade não garantida", 12, Color.GRAY, false);
-        footer.setGravity(Gravity.CENTER); footer.setPadding(0, dp(18), 0, 0); page.addView(footer);
-        setContentView(scroll);
-        refreshRuntimeStatus();
+        containerList.setOrientation(LinearLayout.VERTICAL);
+        page.addView(containerList);
+        Button add = button("＋ Criar container");
+        add.setOnClickListener(v -> showContainerEditor(null)); addTop(page, add, 12);
         renderContainers();
+    }
+
+    private void buildEnginesTab() {
+        page.addView(text("Motores de execução", 22, Color.WHITE, true));
+        page.addView(text("O Winlator usa componentes nativos e um ambiente Linux. O código-base está sendo integrado separadamente; esta tela ainda não confirma a execução de EXE.", 13, muted, false));
+        runtimeLabel = text("", 13, Color.WHITE, false);
+        runtimeLabel.setPadding(dp(13), dp(13), dp(13), dp(13));
+        runtimeLabel.setBackgroundColor(panel); addTop(page, runtimeLabel, 14);
+        Button importRuntime = button("Importar pacote de runtime (.zip)");
+        importRuntime.setOnClickListener(v -> pickRuntime()); addTop(page, importRuntime, 10);
+        Button showEngineGuide = button("Componentes necessários");
+        showEngineGuide.setOnClickListener(v -> new AlertDialog.Builder(this)
+                .setTitle("Motores e componentes")
+                .setMessage("Wine fornece a camada de compatibilidade Windows. Box64/Box86 podem traduzir aplicações x86/x64, com bibliotecas e rootfs compatíveis. Gráficos, áudio e entrada precisam de integração nativa. Nem todos os jogos funcionam.\n\nO Galaxy A12 usa GPU PowerVR; drivers específicos de Adreno, como Turnip, não são universais. O pacote importado pelo app é apenas uma ponte experimental e não equivale ao runtime completo do Winlator.")
+                .setPositiveButton("Entendi", null).show()); addTop(page, showEngineGuide, 8);
+        TextView warning = text("STATUS: integração em andamento\nNão considere o motor funcional até a compilação e a execução serem testadas no aparelho.", 13, Color.rgb(255, 220, 145), false);
+        warning.setPadding(dp(13), dp(13), dp(13), dp(13));
+        warning.setBackgroundColor(Color.rgb(48, 39, 22)); addTop(page, warning, 14);
+        refreshRuntimeStatus();
     }
 
     private void renderContainers() {
