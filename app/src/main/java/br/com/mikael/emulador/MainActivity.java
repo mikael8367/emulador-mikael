@@ -246,7 +246,7 @@ public class MainActivity extends Activity {
 
     private void buildEnginesTab() {
         page.addView(text("Motores de execução", 22, Color.WHITE, true));
-        page.addView(text("Gerencie pacotes de runtime e verifique os componentes. A abertura direta do ambiente ainda está em integração.", 13, muted, false));
+        page.addView(text("Instale ou atualize um pacote de motor Windows a partir de um ZIP compatível. O instalador valida a estrutura e copia os arquivos para o armazenamento privado do app.", 13, muted, false));
         runtimeLabel = text("", 13, Color.WHITE, false);
         runtimeLabel.setPadding(dp(13), dp(13), dp(13), dp(13));
         runtimeLabel.setBackgroundColor(panel); addTop(page, runtimeLabel, 14);
@@ -260,8 +260,10 @@ public class MainActivity extends Activity {
         Button checkComponents = button("↻ Verificar componentes");
         checkComponents.setOnClickListener(v -> updateComponentChecklist(componentsChecklist));
         addTop(page, checkComponents, 8);
-        Button importRuntime = button("Importar pacote de runtime (.zip)");
-        importRuntime.setOnClickListener(v -> pickRuntime()); addTop(page, importRuntime, 10);
+        Button installRuntime = button("⬇  Instalar motor Windows (.ZIP)");
+        installRuntime.setOnClickListener(v -> showRuntimeInstallDialog()); addTop(page, installRuntime, 10);
+        Button importRuntime = smallButton("Selecionar outro ZIP / reinstalar");
+        importRuntime.setOnClickListener(v -> pickRuntime()); addTop(page, importRuntime, 8);
         Button showEngineGuide = button("Componentes necessários");
         showEngineGuide.setOnClickListener(v -> new AlertDialog.Builder(this)
                 .setTitle("Motores e componentes")
@@ -580,6 +582,17 @@ public class MainActivity extends Activity {
             }
         }
         return null;
+    }
+
+    private void showRuntimeInstallDialog() {
+        boolean installed = new File(runtimeDir(), "start-wine.sh").isFile()
+                || new File(runtimeDir(), "start-container.sh").isFile();
+        new AlertDialog.Builder(this)
+                .setTitle(installed ? "Atualizar ou reinstalar motor" : "Instalar motor Windows")
+                .setMessage("Escolha um arquivo ZIP de runtime compatível com Android ARM64. Para abrir programas Windows, o ZIP precisa ter start-wine.sh na raiz. Para iniciar containers, precisa ter start-container.sh na raiz.\n\nO app não baixa um motor pronto automaticamente: você precisa selecionar um pacote que já tenha Wine/Box64 e os arquivos necessários. A instalação extrai o ZIP no armazenamento privado do app e substitui o pacote anterior somente quando a estrutura básica é válida. Isso não garante compatibilidade ou execução real.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Escolher ZIP", (d, w) -> pickRuntime())
+                .show();
     }
 
     private void pickRuntime() {
