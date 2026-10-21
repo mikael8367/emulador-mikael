@@ -1,6 +1,8 @@
 package br.com.mikael.emulador;
 
-import android.app.Activity;
+import androidx.appcompat.app.AppCompatActivity;
+import com.winlator.xenvironment.RootFS;
+import com.winlator.xenvironment.RootFSInstaller;
 import android.app.AlertDialog;
 import android.os.Build;
 import android.os.Bundle;
@@ -35,7 +37,7 @@ import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public class MainActivity extends Activity {
+public class MainActivity extends AppCompatActivity {
     private static final int PICK_EXE = 41;
     private static final int PICK_RUNTIME = 42;
     private Uri selectedUri;
@@ -60,6 +62,28 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(bg);
         loadContainers();
         buildUi();
+        startFirstRunEngineSetup();
+    }
+
+    private void startFirstRunEngineSetup() {
+        // Uses Winlator's own root filesystem installer; it extracts the packaged Linux/Wine
+        // runtime on first launch and checks for updates on later launches.
+        RootFS rootFS = RootFS.find(this);
+        if (!rootFS.isValid() || rootFS.getVersion() < RootFSInstaller.LATEST_VERSION) {
+            status.setText("Primeira configuração: instalando arquivos do motor Wine/Linux…");
+            new AlertDialog.Builder(this)
+                    .setTitle("Configuração inicial do motor")
+                    .setMessage("Na primeira abertura, o Emulador Mikael precisa preparar os arquivos do sistema e do Wine. Isso pode demorar e exige espaço livre. Mantenha a internet ligada para baixar dados adicionais quando necessário. Os componentes gráficos extras podem depender do hardware e ainda precisam ser configurados pelo motor.")
+                    .setCancelable(false)
+                    .setNegativeButton("Depois", (dialog, which) -> status.setText("Configuração inicial adiada. Abra Motores para tentar novamente."))
+                    .setPositiveButton("Instalar agora", (dialog, which) -> {
+                        status.setText("Instalando arquivos do motor…");
+                        RootFSInstaller.installIfNeeded(this);
+                    })
+                    .show();
+        } else {
+            status.setText("Motor base já instalado. Verifique os componentes extras na aba Motores.");
+        }
     }
 
     private void loadContainers() {
