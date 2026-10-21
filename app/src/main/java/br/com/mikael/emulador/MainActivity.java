@@ -241,6 +241,16 @@ public class MainActivity extends Activity {
         runtimeLabel = text("", 13, Color.WHITE, false);
         runtimeLabel.setPadding(dp(13), dp(13), dp(13), dp(13));
         runtimeLabel.setBackgroundColor(panel); addTop(page, runtimeLabel, 14);
+        addTop(page, text("CHECKLIST DE COMPONENTES", 12, green, true), 16);
+        TextView componentsChecklist = text("", 13, Color.WHITE, false);
+        componentsChecklist.setPadding(dp(13), dp(13), dp(13), dp(13));
+        componentsChecklist.setBackgroundColor(panel);
+        componentsChecklist.setTag("component-checklist");
+        addTop(page, componentsChecklist, 8);
+        updateComponentChecklist(componentsChecklist);
+        Button checkComponents = button("↻ Verificar componentes");
+        checkComponents.setOnClickListener(v -> updateComponentChecklist(componentsChecklist));
+        addTop(page, checkComponents, 8);
         Button importRuntime = button("Importar pacote de runtime (.zip)");
         importRuntime.setOnClickListener(v -> pickRuntime()); addTop(page, importRuntime, 10);
         Button showEngineGuide = button("Componentes necessários");
@@ -483,12 +493,84 @@ public class MainActivity extends Activity {
 
     private void refreshRuntimeStatus() {
         if (runtimeLabel == null) return;
-        File script = new File(runtimeDir(), "start-wine.sh");
-        boolean installed = script.isFile();
+        File wineScript = new File(runtimeDir(), "start-wine.sh");
+        File containerScript = new File(runtimeDir(), "start-container.sh");
+        boolean installed = wineScript.isFile() || containerScript.isFile();
         runtimeLabel.setText(installed
-                ? "Motor: pacote importado • " + runtimeDir().getAbsolutePath()
-                : "Motor: não instalado • importe um ZIP que contenha start-wine.sh");
+                ? "Pacote detectado • " + runtimeDir().getAbsolutePath()
+                    + "\\nEXE: " + (wineScript.isFile() ? "script encontrado" : "script ausente")
+                    + " • Container: " + (containerScript.isFile() ? "script encontrado" : "script ausente")
+                : "Motor não instalado • importe um ZIP com start-wine.sh e/ou start-container.sh");
         runtimeLabel.setTextColor(installed ? green : muted);
+        View checklist = page == null ? null : page.findViewWithTag("component-checklist");
+        if (checklist instanceof TextView) updateComponentChecklist((TextView) checklist);
+    }
+
+    private void updateComponentChecklist(TextView target) {
+        File root = runtimeDir();
+        boolean packageDir = root.isDirectory();
+        boolean wineScript = new File(root, "start-wine.sh").isFile();
+        boolean containerScript = new File(root, "start-container.sh").isFile();
+        File wine = findNamedFile(root, new String[]{"wine"});
+        File box64 = findNamedFile(root, new String[]{"box64"});
+        File box86 = findNamedFile(root, new String[]{"box86"});
+        File proot = findNamedFile(root, new String[]{"proot"});
+        File rootfs = findNamedDirectory(root, new String[]{"rootfs", "ubuntu", "debian", "alpine", "filesystem"});
+        File vulkan = findNamedFile(root, new String[]{"libvulkan.so", "vulkan-1.dll"});
+        File dxvk = findNamedFile(root, new String[]{"d3d11.dll", "dxgi.dll"});
+        StringBuilder report = new StringBuilder();
+        report.append(componentLine("Pacote de runtime", packageDir));
+        report.append(componentLine("Inicializador de EXE (start-wine.sh)", wineScript));
+        report.append(componentLine("Inicializador de container (start-container.sh)", containerScript));
+        report.append(componentLine("Wine", wine != null));
+        report.append(componentLine("Box64 (x86_64)", box64 != null));
+        report.append(componentLine("Box86 (x86 32-bit, opcional)", box86 != null));
+        report.append(componentLine("PRoot (opcional, conforme o runtime)", proot != null));
+        report.append(componentLine("Root filesystem Linux", rootfs != null));
+        report.append(componentLine("Biblioteca/arquivos Vulkan (heurística)", vulkan != null));
+        report.append(componentLine("Arquivos DXVK (heurística)", dxvk != null));
+        report.append("\\nA detecção verifica nomes e caminhos, não a integridade nem a execução real. Componentes opcionais dependem do runtime e do hardware; ausência não prova incompatibilidade.");
+        target.setText(report.toString());
+    }
+
+    private String componentLine(String label, boolean found) {
+        return (found ? "✓  " : "⚠  ") + label + (found ? " — encontrado" : " — não detectado") + "\\n";
+    }
+
+    private File findNamedFile(File dir, String[] names) {
+        if (dir == null || !dir.isDirectory()) return null;
+        File[] children = dir.listFiles();
+        if (children == null) return null;
+        for (File child : children) {
+            if (child.isFile()) {
+                for (String name : names) if (child.getName().equalsIgnoreCase(name)) return child;
+            }
+        }
+        for (File child : children) {
+            if (child.isDirectory()) {
+                File found = findNamedFile(child, names);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private File findNamedDirectory(File dir, String[] names) {
+        if (dir == null || !dir.isDirectory()) return null;
+        File[] children = dir.listFiles();
+        if (children == null) return null;
+        for (File child : children) {
+            if (child.isDirectory()) {
+                for (String name : names) if (child.getName().equalsIgnoreCase(name)) return child;
+            }
+        }
+        for (File child : children) {
+            if (child.isDirectory()) {
+                File found = findNamedDirectory(child, names);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private void pickRuntime() {
