@@ -406,9 +406,39 @@ public class MainActivity extends Activity {
         EditText e = new EditText(this); e.setSingleLine(true); e.setText(value); e.setHint(hint);
         e.setTextColor(Color.WHITE); e.setHintTextColor(Color.GRAY); return e;
     }
-    private Button button(String label) { Button b = new Button(this); b.setText(label); return b; }
+    private GradientDrawable customShape(int fill, int radiusDp, int stroke, int strokeDp) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(fill);
+        shape.setCornerRadius(dp(radiusDp));
+        if (strokeDp > 0) shape.setStroke(dp(strokeDp), stroke);
+        return shape;
+    }
+
+    private Button button(String label) {
+        Button b = new Button(this);
+        b.setText(label);
+        b.setTextColor(Color.WHITE);
+        b.setTextSize(14);
+        b.setAllCaps(false);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(16), dp(10), dp(16), dp(10));
+        b.setMinHeight(dp(48));
+        b.setBackground(customShape(Color.rgb(25, 57, 39), 14, Color.rgb(54, 121, 80), 1));
+        b.setStateListAnimator(null);
+        if (Build.VERSION.SDK_INT >= 21) b.setElevation(dp(1));
+        return b;
+    }
+
     private Button smallButton(String label) {
-        Button b = new Button(this); b.setText(label); b.setTextSize(11); b.setPadding(dp(2), 0, dp(2), 0); return b;
+        Button b = new Button(this);
+        b.setText(label);
+        b.setTextSize(11);
+        b.setTextColor(green);
+        b.setAllCaps(false);
+        b.setPadding(dp(4), dp(4), dp(4), dp(4));
+        b.setBackground(customShape(Color.rgb(28, 42, 34), 10, Color.rgb(51, 79, 61), 1));
+        b.setStateListAnimator(null);
+        return b;
     }
     private LinearLayout.LayoutParams weightParams() {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, -2, 1);
@@ -418,7 +448,10 @@ public class MainActivity extends Activity {
         TextView t = new TextView(this); t.setText(value); t.setTextSize(size); t.setTextColor(color);
         if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD); return t;
     }
-    private void cardStyle(TextView v) { v.setPadding(dp(15), dp(14), dp(15), dp(14)); v.setBackgroundColor(panel); }
+    private void cardStyle(TextView v) {
+        v.setPadding(dp(15), dp(14), dp(15), dp(14));
+        v.setBackground(customShape(panel, 16, Color.rgb(37, 57, 45), 1));
+    }
     private void addTop(LinearLayout parent, View view, int margin) {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.topMargin = dp(margin); parent.addView(view, p);
     }
