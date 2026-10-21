@@ -120,15 +120,9 @@ public class MainActivity extends Activity {
         Button add = button("+ Criar container");
         add.setOnClickListener(v -> showContainerEditor(null)); addTop(page, add, 10);
 
-        TextView warning = text("MOTOR WINDOWS AINDA NÃO INTEGRADO\nAs configurações são salvas por perfil, mas ainda não alteram a execução de jogos. O motor Wine/Box64 ainda precisa ser integrado.", 13, Color.rgb(255, 220, 145), false);
+        TextView warning = text("MOTOR WINDOWS AINDA NÃO INTEGRADO\nA seleção de arquivos funciona sem container. Para executar jogos e programas EXE, ainda é necessário integrar Wine/Box64 ou outro motor compatível; o Android não executa EXE nativamente.", 13, Color.rgb(255, 220, 145), false);
         warning.setPadding(dp(14), dp(14), dp(14), dp(14));
         warning.setBackgroundColor(Color.rgb(48, 39, 22)); addTop(page, warning, 18);
-
-        Button choose = button("Selecionar arquivo .EXE");
-        choose.setOnClickListener(v -> pickExe()); addTop(page, choose, 18);
-        selectedFile = text("Nenhum arquivo selecionado", 13, muted, false); page.addView(selectedFile);
-        status = text("Estado: interface pronta • execução de EXE indisponível", 13, green, false);
-        status.setPadding(0, dp(20), 0, dp(5)); page.addView(status);
         TextView footer = text("Projeto experimental • compatibilidade não garantida", 12, Color.GRAY, false);
         footer.setGravity(Gravity.CENTER); footer.setPadding(0, dp(18), 0, 0); page.addView(footer);
         setContentView(scroll);
@@ -401,7 +395,7 @@ public class MainActivity extends Activity {
                 try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
                 catch (Exception ignored) { }
                 selectedDisplayName = queryDisplayName(uri);
-                selectedFile.setText("Arquivo: " + selectedDisplayName + "\\nTipo: " + fileKind(selectedDisplayName));
+                selectedFile.setText("Arquivo: " + selectedDisplayName + "\nTipo: " + fileKind(selectedDisplayName));
                 status.setText("Selecionado sem container. Toque em Abrir arquivo selecionado para tentar abrir.");
             }
         }
