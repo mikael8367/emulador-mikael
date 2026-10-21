@@ -284,8 +284,20 @@ public class MainActivity extends AppCompatActivity {
         Button checkComponents = button("↻ Verificar componentes");
         checkComponents.setOnClickListener(v -> updateComponentChecklist(componentsChecklist));
         addTop(page, checkComponents, 8);
-        Button installRuntime = button("⬇  Instalar motor Windows (.ZIP)");
-        installRuntime.setOnClickListener(v -> showRuntimeInstallDialog()); addTop(page, installRuntime, 10);
+        Button installBase = button("⬇  Instalar / reparar motor base Wine + Linux");
+        installBase.setOnClickListener(v -> {
+            RootFS rootFS = RootFS.find(this);
+            if (rootFS.isValid() && rootFS.getVersion() >= RootFSInstaller.LATEST_VERSION) {
+                new AlertDialog.Builder(this).setTitle("Motor base instalado")
+                        .setMessage("Os arquivos base do Wine/Linux já estão instalados. Box64, drivers gráficos e tradutores DirectX adicionais são componentes separados e dependem da integração/configuração do motor.")
+                        .setPositiveButton("OK", null).show();
+            } else {
+                status.setText("Instalando arquivos do motor base…");
+                RootFSInstaller.installIfNeeded(this);
+            }
+        }); addTop(page, installBase, 10);
+        Button installRuntime = button("Instalar pacote de motor externo (.ZIP)");
+        installRuntime.setOnClickListener(v -> showRuntimeInstallDialog()); addTop(page, installRuntime, 8);
         Button importRuntime = smallButton("Selecionar outro ZIP / reinstalar");
         importRuntime.setOnClickListener(v -> pickRuntime()); addTop(page, importRuntime, 8);
         Button showEngineGuide = button("Componentes necessários");
