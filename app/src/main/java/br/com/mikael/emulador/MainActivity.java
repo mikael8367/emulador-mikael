@@ -129,12 +129,26 @@ public class MainActivity extends Activity {
         Button add = button("+ Criar container");
         add.setOnClickListener(v -> showContainerEditor(null)); addTop(page, add, 10);
 
-        TextView warning = text("MOTOR WINDOWS EXTERNO NECESSÁRIO\nO app agora aceita importar um pacote de runtime e encaminhar um EXE para ele. Este repositório não inclui Wine/Box64 nem uma imagem Linux; a execução só poderá ser tentada depois de importar um pacote compatível com o contrato documentado.", 13, Color.rgb(255, 220, 145), false);
+        TextView engineTitle = text("MOTORES DE EXECUÇÃO", 13, green, true);
+        engineTitle.setPadding(0, dp(22), 0, dp(8)); page.addView(engineTitle);
+        page.addView(text("O app precisa de um runtime real compilado para ARM64. Os componentes abaixo não são intercambiáveis e não vêm instalados automaticamente.", 13, muted, false));
+        runtimeLabel = text("", 13, Color.WHITE, false);
+        runtimeLabel.setPadding(dp(12), dp(12), dp(12), dp(12));
+        runtimeLabel.setBackgroundColor(panel); addTop(page, runtimeLabel, 8);
+        Button importRuntime = button("Importar pacote do motor Windows (.zip)");
+        importRuntime.setOnClickListener(v -> pickRuntime()); addTop(page, importRuntime, 8);
+        Button showEngineGuide = button("Ver motores necessários");
+        showEngineGuide.setOnClickListener(v -> new AlertDialog.Builder(this)
+                .setTitle("Componentes do runtime")
+                .setMessage("Para tentar rodar programas Windows ARM64/x86/x64, um pacote compatível pode precisar de Wine (API Windows), Box64/Box86 (tradução x86/x64 para ARM64), uma rootfs Linux e bibliotecas. Para gráficos 3D, pode precisar de Mesa/VirGL ou um backend Vulkan compatível e DXVK/VKD3D; áudio e entrada também precisam de integração.\n\nNão existe um pacote universal: Turnip é para GPUs Adreno e não deve ser selecionado como se funcionasse na PowerVR deste aparelho. O importador atual é uma ponte, não baixa nem instala esses motores sozinho.")
+                .setPositiveButton("Entendi", null).show()); addTop(page, showEngineGuide, 6);
+        TextView warning = text("AINDA NÃO EXECUTA EXE POR PADRÃO\nEste repositório ainda não inclui os binários Wine/Box64/Box86 nem uma rootfs. Importar um ZIP só instala o pacote fornecido; não garante que ele funcione. A execução real precisa ser validada no aparelho.", 13, Color.rgb(255, 220, 145), false);
         warning.setPadding(dp(14), dp(14), dp(14), dp(14));
-        warning.setBackgroundColor(Color.rgb(48, 39, 22)); addTop(page, warning, 18);
+        warning.setBackgroundColor(Color.rgb(48, 39, 22)); addTop(page, warning, 12);
         TextView footer = text("Projeto experimental • compatibilidade não garantida", 12, Color.GRAY, false);
         footer.setGravity(Gravity.CENTER); footer.setPadding(0, dp(18), 0, 0); page.addView(footer);
         setContentView(scroll);
+        refreshRuntimeStatus();
         renderContainers();
     }
 
