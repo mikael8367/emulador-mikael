@@ -222,6 +222,21 @@ public class MainActivity extends Activity {
         viewEngine.setOnClickListener(v -> showTab(3)); addTop(page, viewEngine, 8);
     }
 
+    private void openFullEngine() {
+        Intent launch = getPackageManager().getLaunchIntentForPackage("br.com.mikael.emulador.motor");
+        if (launch != null) {
+            startActivity(launch);
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Motor completo não instalado")
+                .setMessage("Instale o APK “Emulador Mikael - Motor” gerado pelo workflow do Winlator. Ao abrir pela primeira vez, conecte à internet e aguarde a instalação dos componentes; reserve espaço livre suficiente. A compatibilidade gráfica no seu aparelho PowerVR não é garantida.")
+                .setPositiveButton("Ver builds do motor", (d, w) -> startActivity(new Intent(Intent.ACTION_VIEW,
+                        Uri.parse("https://github.com/mikael8367/emulador-mikael/actions/workflows/winlator-base.yml"))))
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
     private void buildContainersTab() {
         page.addView(text("Containers", 22, Color.WHITE, true));
         page.addView(text("Organize perfis e preferências em cartões. Criar um perfil não instala nem inicia um sistema operacional.", 13, muted, false));
@@ -237,7 +252,14 @@ public class MainActivity extends Activity {
 
     private void buildEnginesTab() {
         page.addView(text("Motores de execução", 22, Color.WHITE, true));
-        page.addView(text("O Winlator usa componentes nativos e um ambiente Linux. O código-base está sendo integrado separadamente; esta tela ainda não confirma a execução de EXE.", 13, muted, false));
+        page.addView(text("O motor completo usa a base do Winlator para instalar e preparar Wine, Box64/Box86, rootfs e componentes gráficos compatíveis. O motor é um APK separado nesta etapa.", 13, muted, false));
+        Button openFullEngine = button("▶ Abrir motor completo");
+        openFullEngine.setOnClickListener(v -> openFullEngine());
+        addTop(page, openFullEngine, 12);
+        Button getEngine = button("Obter APK do motor");
+        getEngine.setOnClickListener(v -> startActivity(new Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://github.com/mikael8367/emulador-mikael/actions/workflows/winlator-base.yml"))));
+        addTop(page, getEngine, 8);
         runtimeLabel = text("", 13, Color.WHITE, false);
         runtimeLabel.setPadding(dp(13), dp(13), dp(13), dp(13));
         runtimeLabel.setBackgroundColor(panel); addTop(page, runtimeLabel, 14);
