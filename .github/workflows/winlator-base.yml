@@ -98,6 +98,22 @@ jobs:
           grep -q "br.com.mikael.emulador.MainActivity" "$APP/app/src/main/AndroidManifest.xml"
           grep -q "br.com.mikael.emulador" "$APP/app/build.gradle"
 
+      - name: Adapt first-run runtime installer to Mikael activity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("upstream-winlator/app/app/src/main/java/com/winlator/xenvironment/RootFSInstaller.java")
+          source = path.read_text()
+          source = source.replace("import com.winlator.MainActivity;\\n", "")
+          source = source.replace("public static void install(final MainActivity activity)", "public static void install(final AppCompatActivity activity)")
+          source = source.replace("public static void installIfNeeded(final MainActivity activity)", "public static void installIfNeeded(final AppCompatActivity activity)")
+          if "installIfNeeded(final AppCompatActivity activity)" not in source:
+              raise SystemExit("Não foi possível adaptar RootFSInstaller")
+          path.write_text(source)
+          PY
+
       - name: Build one combined APK
         working-directory: upstream-winlator/app
         run: bash ./gradlew --no-daemon assembleDebug
