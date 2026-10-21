@@ -66,23 +66,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startFirstRunEngineSetup() {
-        // Uses Winlator's own root filesystem installer; it extracts the packaged Linux/Wine
-        // runtime on first launch and checks for updates on later launches.
+        // Installs Winlator's packaged Wine/Linux root filesystem on first launch.
         RootFS rootFS = RootFS.find(this);
         if (!rootFS.isValid() || rootFS.getVersion() < RootFSInstaller.LATEST_VERSION) {
-            status.setText("Primeira configuração: instalando arquivos do motor Wine/Linux…");
-            new AlertDialog.Builder(this)
-                    .setTitle("Configuração inicial do motor")
-                    .setMessage("Na primeira abertura, o Emulador Mikael precisa preparar os arquivos do sistema e do Wine. Isso pode demorar e exige espaço livre. Mantenha a internet ligada para baixar dados adicionais quando necessário. Os componentes gráficos extras podem depender do hardware e ainda precisam ser configurados pelo motor.")
-                    .setCancelable(false)
-                    .setNegativeButton("Depois", (dialog, which) -> status.setText("Configuração inicial adiada. Abra Motores para tentar novamente."))
-                    .setPositiveButton("Instalar agora", (dialog, which) -> {
-                        status.setText("Instalando arquivos do motor…");
-                        RootFSInstaller.installIfNeeded(this);
-                    })
-                    .show();
+            status.setText("Primeira abertura: instalando os arquivos base do motor Wine/Linux…");
+            RootFSInstaller.installIfNeeded(this);
         } else {
-            status.setText("Motor base já instalado. Verifique os componentes extras na aba Motores.");
+            status.setText("Arquivos base do motor já instalados.");
         }
     }
 
