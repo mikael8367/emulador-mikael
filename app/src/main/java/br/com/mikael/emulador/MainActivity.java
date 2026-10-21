@@ -131,7 +131,7 @@ public class MainActivity extends Activity {
             LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
             cp.topMargin = dp(8); containerList.addView(card, cp);
             card.addView(text((p.id == activeId ? "✓  " : "") + p.name, 17, Color.WHITE, true));
-            TextView details = text(p.windows + " • " + p.resolution + " • " + p.ram + " MB RAM\n"
+            TextView details = text(p.osName + " • " + p.resolution + " • " + p.ram + " MB RAM\n"
                     + p.graphics + " • " + p.dx + " • " + p.cpu + " threads\n"
                     + "Box64: " + p.box64 + " • FPS: " + p.fps + " • " + (p.fullscreen ? "Tela cheia" : "Janela"), 12, muted, false);
             details.setPadding(0, dp(5), 0, dp(8)); card.addView(details);
@@ -163,8 +163,13 @@ public class MainActivity extends Activity {
         EditText name = editText(values.name, "Nome do container");
         addField(form, "IDENTIFICAÇÃO", name);
 
-        Spinner windows = spinner(new String[]{"Windows 7", "Windows 10", "Windows 11", "Windows XP (legado)"}, values.windows);
-        addField(form, "Versão do Windows simulada", windows);
+        Spinner os = spinner(new String[]{
+                "Windows 11", "Windows 10", "Windows 8.1", "Windows 7", "Windows XP (legado)",
+                "Ubuntu", "Debian", "Linux Mint", "Fedora", "Arch Linux", "Manjaro",
+                "Kali Linux", "openSUSE", "Alpine Linux", "Linux (outra distribuição)",
+                "FreeBSD", "ReactOS (experimental)", "FreeDOS"
+        }, values.osName);
+        addField(form, "Sistema operacional / distribuição", os);
         Spinner resolution = spinner(new String[]{"640 × 480", "800 × 600", "960 × 540", "1280 × 720", "1600 × 900", "1920 × 1080"}, values.resolution);
         addField(form, "Resolução", resolution);
         Spinner orientation = spinner(new String[]{"Paisagem", "Retrato", "Automático"}, values.orientation);
@@ -215,7 +220,7 @@ public class MainActivity extends Activity {
                 }
             }
             values.name = newName;
-            values.windows = windows.getSelectedItem().toString();
+            values.osName = os.getSelectedItem().toString();
             values.resolution = resolution.getSelectedItem().toString();
             values.orientation = orientation.getSelectedItem().toString();
             values.ram = parseInt(ram.getSelectedItem().toString(), 1024);
@@ -314,14 +319,14 @@ public class MainActivity extends Activity {
 
     private static class ContainerProfile {
         int id, ram = 1024, cpu = 2;
-        String name, windows = "Windows 10", resolution = "1280 × 720", orientation = "Paisagem";
+        String name, osName = "Windows 10", windows = "Windows 10", resolution = "1280 × 720", orientation = "Paisagem";
         String box64 = "Equilibrado", graphics = "Automático", dx = "Desativado", audio = "Padrão";
         String input = "Toque na tela", fps = "60", env = "", args = "";
         boolean fullscreen = true, pointer = true, audioEnabled = true, esync = false, debug = false;
         ContainerProfile(int id, String name) { this.id = id; this.name = name; }
         ContainerProfile copy() {
             ContainerProfile p = new ContainerProfile(id, name);
-            p.ram=ram; p.cpu=cpu; p.windows=windows; p.resolution=resolution; p.orientation=orientation;
+            p.ram=ram; p.cpu=cpu; p.windows=windows; p.osName=osName; p.resolution=resolution; p.orientation=orientation;
             p.box64=box64; p.graphics=graphics; p.dx=dx; p.audio=audio; p.input=input; p.fps=fps;
             p.env=env; p.args=args; p.fullscreen=fullscreen; p.pointer=pointer; p.audioEnabled=audioEnabled;
             p.esync=esync; p.debug=debug; return p;
@@ -329,7 +334,7 @@ public class MainActivity extends Activity {
         JSONObject toJson() {
             JSONObject o = new JSONObject();
             try {
-                o.put("id",id); o.put("name",name); o.put("windows",windows); o.put("resolution",resolution);
+                o.put("id",id); o.put("name",name); o.put("windows",windows); o.put("osName",osName); o.put("resolution",resolution);
                 o.put("orientation",orientation); o.put("ram",ram); o.put("cpu",cpu); o.put("box64",box64);
                 o.put("graphics",graphics); o.put("dx",dx); o.put("audio",audio); o.put("input",input);
                 o.put("fps",fps); o.put("env",env); o.put("args",args); o.put("fullscreen",fullscreen);
@@ -339,7 +344,7 @@ public class MainActivity extends Activity {
         }
         static ContainerProfile fromJson(JSONObject o) {
             ContainerProfile p = new ContainerProfile(o.optInt("id",1), o.optString("name","Container"));
-            p.windows=o.optString("windows","Windows 10"); p.resolution=o.optString("resolution","1280 × 720");
+            p.windows=o.optString("windows","Windows 10"); p.osName=o.optString("osName", p.windows); p.resolution=o.optString("resolution","1280 × 720");
             p.orientation=o.optString("orientation","Paisagem"); p.ram=o.optInt("ram",1024); p.cpu=o.optInt("cpu",2);
             p.box64=o.optString("box64",o.optString("preset","Equilibrado"));
             p.graphics=o.optString("graphics",o.optString("graphicsOld","Automático"));
