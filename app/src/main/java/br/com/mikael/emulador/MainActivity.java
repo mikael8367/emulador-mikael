@@ -12,6 +12,7 @@ import android.provider.OpenableColumns;
 import android.net.Uri;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.Button;
