@@ -3,8 +3,12 @@ package br.com.mikael.emulador;
 import androidx.appcompat.app.AppCompatActivity;
 import com.winlator.xenvironment.RootFS;
 import com.winlator.xenvironment.RootFSInstaller;
+import com.winlator.core.GeneralComponents;
+import com.winlator.core.DefaultVersion;
 import android.app.AlertDialog;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -66,14 +70,69 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startFirstRunEngineSetup() {
-        // Installs Winlator's packaged Wine/Linux root filesystem on first launch.
+        // Installs the bundled Wine/Linux root filesystem on first launch.
         RootFS rootFS = RootFS.find(this);
         if (!rootFS.isValid() || rootFS.getVersion() < RootFSInstaller.LATEST_VERSION) {
             status.setText("Primeira abertura: instalando os arquivos base do motor Wine/Linux…");
             RootFSInstaller.installIfNeeded(this);
         } else {
-            status.setText("Arquivos base do motor já instalados.");
+            status.setText("Arquivos base encontrados; verificando Box64 e runtimes gráficos…");
         }
+        scheduleBundledComponentSetup();
+    }
+
+    private void scheduleBundledComponentSetup() {
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            int attempts = 0;
+            @Override public void run() {
+                RootFS rootFS = RootFS.find(MainActivity.this);
+                if (rootFS.isValid() && rootFS.getVersion() >= RootFSInstaller.LATEST_VERSION) {
+                    installBundledComponentsAsync();
+                } else if (++attempts < 600) {
+                    handler.postDelayed(this, 1000);
+                } else {
+                    status.setText("A instalação do sistema base não terminou. Abra Motores para tentar novamente.");
+                }
+            }
+        });
+    }
+
+    private void installBundledComponentsAsync() {
+        File rootDir = RootFS.find(this).getRootDir();
+        File box64 = findNamedFile(rootDir, new String[]{"box64"});
+        if (box64 != null && getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean("bundled_components_v1", false)) {
+            status.setText("Motor base e Box64 já preparados.");
+            return;
+        }
+        status.setText("Preparando Box64, DXVK, VKD3D e componentes de áudio…");
+        new Thread(() -> {
+            boolean verified = false;
+            String error = null;
+            try {
+                GeneralComponents.extractFile(GeneralComponents.Type.BOX64, this,
+                        DefaultVersion.BOX64, DefaultVersion.BOX64);
+                GeneralComponents.extractFile(GeneralComponents.Type.DXVK, this,
+                        DefaultVersion.MAJOR_DXVK, DefaultVersion.MAJOR_DXVK);
+                GeneralComponents.extractFile(GeneralComponents.Type.VKD3D, this,
+                        DefaultVersion.VKD3D, DefaultVersion.VKD3D);
+                GeneralComponents.extractFile(GeneralComponents.Type.SOUNDFONT, this,
+                        DefaultVersion.SOUNDFONT, DefaultVersion.SOUNDFONT);
+                verified = findNamedFile(RootFS.find(this).getRootDir(), new String[]{"box64"}) != null;
+                if (!verified) error = "Os arquivos foram processados, mas o executável Box64 não foi encontrado no sistema extraído.";
+            } catch (Exception e) {
+                error = e.getMessage();
+            }
+            final boolean success = verified;
+            final String details = error;
+            if (success) getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean("bundled_components_v1", true).apply();
+            runOnUiThread(() -> {
+                status.setText(success
+                        ? "Motor base preparado: Wine/Linux + Box64; DXVK/VKD3D e áudio extraídos. Drivers gráficos devem ser escolhidos conforme a GPU."
+                        : "Configuração parcial dos componentes: " + (details == null ? "verifique espaço livre e logs." : details));
+                refreshRuntimeStatus();
+            });
+        }, "mikael-component-setup").start();
     }
 
     private void loadContainers() {
