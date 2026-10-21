@@ -116,8 +116,8 @@ public class MainActivity extends AppCompatActivity {
                         DefaultVersion.MAJOR_DXVK, DefaultVersion.MAJOR_DXVK);
                 GeneralComponents.extractFile(GeneralComponents.Type.VKD3D, this,
                         DefaultVersion.VKD3D, DefaultVersion.VKD3D);
-                GeneralComponents.extractFile(GeneralComponents.Type.SOUNDFONT, this,
-                        DefaultVersion.SOUNDFONT, DefaultVersion.SOUNDFONT);
+                GeneralComponents.getDefinitivePath(GeneralComponents.Type.SOUNDFONT, this,
+                        DefaultVersion.SOUNDFONT);
                 verified = findNamedFile(RootFS.find(this).getRootDir(), new String[]{"box64"}) != null;
                 if (!verified) error = "Os arquivos foram processados, mas o executável Box64 não foi encontrado no sistema extraído.";
             } catch (Exception e) {
