@@ -1,29 +1,33 @@
-# Integração do Winlator
+# Integração do Winlator no Emulador Mikael
 
-## Fonte vinculada
+## Estratégia atual
 
-O projeto contém o código Android do Winlator como submódulo Git em `winlator-source/`:
+O projeto mantém a interface personalizada do Emulador Mikael e constrói um APK separado, reidentificado como **Emulador Mikael - Motor**, a partir do código completo do projeto upstream Winlator. Essa separação permite usar o motor real sem fingir que o protótipo de perfis e scripts já contém Wine e rootfs.
 
-- Repositório de origem: https://github.com/brunodev85/winlator-app
-- Commit fixado: `8077f374ef2d54127b088de9e8cd7b4af14d9c8b`
-- Licença do código-fonte: LGPL-2.1; consulte `winlator-source/LICENSE` e cumpra as obrigações aplicáveis antes de redistribuir versões modificadas.
+- Código upstream: https://github.com/brunodev85/winlator
+- Licença upstream: LGPL-2.1. Consulte e preserve a licença, avisos e fontes correspondentes ao distribuir modificações.
+- O workflow é `.github/workflows/winlator-base.yml`.
+- O artefato de compilação esperado é `emulador-mikael-winlator-engine-apk`, contendo o APK do motor e informações/licença.
+- A interface principal tem os botões **Abrir motor completo** e **Obter APK do motor**. O APK principal e o APK do motor continuam sendo dois aplicativos separados nesta fase.
 
-A referência é fixada num commit para que o código usado no teste não mude inesperadamente.
+## Instalação e primeiro início
 
-## Teste de compilação
+1. Abra o workflow de motor no GitHub Actions e baixe o artefato após uma compilação bem-sucedida.
+2. Extraia o ZIP do artefato e instale `Emulador-Mikael-Motor-debug.apk`.
+3. Abra o motor e mantenha conexão à internet enquanto ele instala/prepara os componentes exigidos pela implementação upstream.
+4. Reserve vários GB livres. O espaço exato depende dos componentes e versões baixados.
+5. Depois, abra o Emulador Mikael e toque em **Abrir motor completo** para acessar o motor instalado.
 
-O workflow `.github/workflows/winlator-base.yml` faz checkout recursivo do submódulo, configura Java/Android SDK/NDK e tenta compilar o APK-base do Winlator. Se a compilação terminar com sucesso, o artefato chama-se `winlator-base-debug-apk`.
+O motor upstream é responsável pelo fluxo real de preparação do ambiente Wine/Box86/Box64/rootfs e pelos componentes gráficos que ele suporta. O APK principal ainda não incorpora as classes nativas do motor dentro do mesmo APK; por isso, o botão abre o app de motor separado.
 
-Esse APK é um **artefato de teste do Winlator original**, não uma versão final do Emulador Mikael. Ainda usa a identidade/pacote do Winlator e não deve ser apresentado como o aplicativo rebatizado.
+## Limitações importantes
 
-## Próximas etapas para uma integração real
+- Compilar o APK não comprova que o motor iniciará ou que qualquer arquivo EXE funcionará.
+- O Galaxy A12 de referência usa GPU PowerVR, não Adreno. Turnip é voltado a GPUs Adreno compatíveis e não deve ser tratado como driver universal. A compatibilidade gráfica e o desempenho podem ser limitados.
+- Alguns jogos e programas dependem de arquitetura, bibliotecas, DirectX, memória e recursos não disponíveis em todos os aparelhos.
+- Não é seguro declarar compatibilidade universal. Teste primeiro com um executável simples e consulte os logs se houver falha.
+- O APK do motor é uma build de desenvolvimento; antes de redistribuir, revise a licença LGPL-2.1, as modificações de identidade e os avisos de terceiros.
 
-1. Confirmar que o código-fonte vinculado compila no CI.
-2. Trazer o código para uma base modificável e definir uma estratégia sustentável para atualizar o upstream.
-3. Adaptar nome, ícone, identificador do pacote e interface do Emulador Mikael sem quebrar a inicialização do ambiente.
-4. Validar os componentes nativos e a instalação do ambiente Wine/rootfs.
-5. Testar com executáveis não críticos no Android real; compilação sozinha não prova compatibilidade.
+## Runtime ZIP experimental do app principal
 
-## Compatibilidade de GPU
-
-O Galaxy A12 informado como dispositivo-alvo usa GPU PowerVR. O driver Turnip é destinado a GPUs Adreno compatíveis e não deve ser selecionado como se fosse universal. A compatibilidade gráfica precisa ser verificada com uma opção adequada, como VirGL/Vortek quando suportada pela combinação de componentes, sem garantia de desempenho.
+O importador `start-wine.sh`/`start-container.sh` continua sendo uma ponte experimental. Ele não substitui o motor upstream completo e não deve ser apresentado como um runtime autossuficiente.
