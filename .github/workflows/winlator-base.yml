@@ -34,7 +34,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools;platforms;android-35;build-tools;35.0.0;ndk;24.0.8215888;cmake;3.22.1'
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 ndk;24.0.8215888 cmake;3.22.1'
 
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses || true
@@ -43,7 +43,7 @@ jobs:
         working-directory: upstream-winlator/app
         run: |
           sed -i 's/applicationId "com.winlator"/applicationId "br.com.mikael.emulador.motor"/' app/build.gradle
-          sed -i 's/<string name="app_name">Winlator<\\/string>/<string name="app_name">Emulador Mikael - Motor<\\/string>/' app/src/main/res/values/strings.xml
+          sed -i 's|<string name="app_name">Winlator</string>|<string name="app_name">Emulador Mikael - Motor</string>|' app/src/main/res/values/strings.xml
           grep -q 'br.com.mikael.emulador.motor' app/build.gradle
           grep -q 'Emulador Mikael - Motor' app/src/main/res/values/strings.xml
 
