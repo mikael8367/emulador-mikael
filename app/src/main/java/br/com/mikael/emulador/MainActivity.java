@@ -270,6 +270,9 @@ public class MainActivity extends Activity {
                     + p.graphics + " • " + p.dx + " • " + p.cpu + " threads\n"
                     + "Box64: " + p.box64 + " • FPS: " + p.fps + " • " + (p.fullscreen ? "Tela cheia" : "Janela"), 12, muted, false);
             details.setPadding(0, dp(5), 0, dp(8)); card.addView(details);
+            Button runContainer = button("▶  Executar container");
+            runContainer.setOnClickListener(v -> launchContainer(p));
+            addTop(card, runContainer, 4);
             LinearLayout actions = new LinearLayout(this); actions.setOrientation(LinearLayout.HORIZONTAL);
             Button select = smallButton(p.id == activeId ? "Ativo" : "Selecionar");
             select.setEnabled(p.id != activeId);
@@ -533,8 +536,11 @@ public class MainActivity extends Activity {
                         zip.closeEntry();
                     }
                 }
-                File script = new File(stage, "start-wine.sh");
-                if (!script.isFile()) throw new IOException("Pacote incompatível: falta start-wine.sh na raiz do ZIP.");
+                File wineScript = new File(stage, "start-wine.sh");
+                File containerScript = new File(stage, "start-container.sh");
+                if (!wineScript.isFile() && !containerScript.isFile()) {
+                    throw new IOException("Pacote incompatível: precisa conter start-wine.sh (executar EXE) ou start-container.sh (iniciar container) na raiz do ZIP.");
+                }
                 File destination = runtimeDir();
                 File backup = new File(getFilesDir(), "wine-runtime-backup");
                 deleteTree(backup);
@@ -558,6 +564,58 @@ public class MainActivity extends Activity {
                 Toast.makeText(MainActivity.this, success ? "Pacote importado" : "Importação falhou", Toast.LENGTH_LONG).show();
             });
         }, "runtime-import").start();
+    }
+
+    private void launchContainer(ContainerProfile profile) {
+        File script = new File(runtimeDir(), "start-container.sh");
+        if (!script.isFile()) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Inicializador de container ausente")
+                    .setMessage("O perfil foi salvo, mas ainda não é um sistema operacional instalado. Para iniciar um container, importe na aba Motores um pacote compatível que contenha start-container.sh na raiz. Um pacote que tenha somente start-wine.sh serve para tentar abrir EXEs, não para iniciar um ambiente de container completo.")
+                    .setPositiveButton("Abrir Motores", (d, w) -> showTab(3))
+                    .setNegativeButton("Fechar", null).show();
+            status.setText("Container não iniciado: falta start-container.sh no runtime.");
+            return;
+        }
+        status.setText("Iniciando container: " + profile.name + "…");
+        new Thread(() -> {
+            try {
+                File containerRoot = new File(getFilesDir(), "containers/" + profile.id);
+                if (!containerRoot.exists() && !containerRoot.mkdirs()) {
+                    throw new IOException("Não foi possível criar a pasta de dados do container.");
+                }
+                File log = new File(getFilesDir(), "container-" + profile.id + ".log");
+                ProcessBuilder builder = new ProcessBuilder("/system/bin/sh", script.getAbsolutePath(),
+                        containerRoot.getAbsolutePath());
+                builder.directory(runtimeDir());
+                builder.redirectErrorStream(true);
+                builder.redirectOutput(log);
+                builder.environment().put("MIKAEL_CONTAINER_ID", String.valueOf(profile.id));
+                builder.environment().put("MIKAEL_CONTAINER_NAME", profile.name);
+                builder.environment().put("MIKAEL_CONTAINER_OS", profile.osName);
+                builder.environment().put("MIKAEL_CONTAINER_ROOT", containerRoot.getAbsolutePath());
+                builder.environment().put("MIKAEL_CONTAINER_RESOLUTION", profile.resolution);
+                builder.environment().put("MIKAEL_CONTAINER_RAM_MB", String.valueOf(profile.ram));
+                builder.environment().put("MIKAEL_CONTAINER_CPU_THREADS", String.valueOf(profile.cpu));
+                builder.environment().put("MIKAEL_CONTAINER_GRAPHICS", profile.graphics);
+                builder.environment().put("MIKAEL_CONTAINER_DIRECTX", profile.dx);
+                Process process = builder.start();
+                runningProcess = process;
+                runOnUiThread(() -> status.setText("Inicializador executado para " + profile.name
+                        + ". Isso não confirma que o sistema abriu; log: " + log.getAbsolutePath()));
+                new Thread(() -> {
+                    try {
+                        int code = process.waitFor();
+                        runOnUiThread(() -> status.setText("Inicializador do container terminou (código "
+                                + code + "). Consulte " + log.getAbsolutePath()));
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }, "container-watch").start();
+            } catch (Exception e) {
+                runOnUiThread(() -> status.setText("Falha ao iniciar container: " + e.getMessage()));
+            }
+        }, "container-launch").start();
     }
 
     private void launchWindowsFile() {
