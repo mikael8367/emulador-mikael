@@ -6,6 +6,9 @@ import android.os.Build;
 import android.os.Bundle;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.ActivityNotFoundException;
+import android.database.Cursor;
+import android.provider.OpenableColumns;
 import android.net.Uri;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -27,6 +30,8 @@ import java.util.List;
 
 public class MainActivity extends Activity {
     private static final int PICK_EXE = 41;
+    private Uri selectedUri;
+    private String selectedDisplayName = "";
     private static final String PREFS = "mikael_emulator";
     private static final String KEY_CONTAINERS = "containers_v1";
     private static final String KEY_ACTIVE = "active_container";
@@ -90,13 +95,24 @@ public class MainActivity extends Activity {
         page.addView(text("MIKAEL • WINDOWS ON ANDROID", 12, green, true));
         TextView title = text("Emulador Mikael", 28, Color.WHITE, true);
         title.setPadding(0, dp(7), 0, dp(5)); page.addView(title);
-        page.addView(text("Crie ambientes separados e personalize cada perfil.", 14, muted, false));
+        page.addView(text("Abra arquivos diretamente, sem precisar criar um container.", 14, muted, false));
 
         TextView device = text("DISPOSITIVO\nAndroid " + Build.VERSION.RELEASE + " • API " + Build.VERSION.SDK_INT
                 + "\nArquitetura: " + Build.SUPPORTED_ABIS[0], 14, Color.WHITE, false);
         cardStyle(device); addTop(page, device, 18);
 
-        TextView section = text("SEUS CONTAINERS", 13, green, true);
+        TextView launchSection = text("EXECUÇÃO DIRETA • SEM CONTAINER", 13, green, true);
+        launchSection.setPadding(0, dp(22), 0, dp(8)); page.addView(launchSection);
+        page.addView(text("Selecione jogos, instaladores, documentos ou outros arquivos. O app identificará o tipo e tentará abrir formatos que o Android ou outro aplicativo instalado suporte.", 13, muted, false));
+        Button choose = button("Selecionar arquivo ou jogo");
+        choose.setOnClickListener(v -> pickExe()); addTop(page, choose, 10);
+        selectedFile = text("Nenhum arquivo selecionado", 13, muted, false); addTop(page, selectedFile, 6);
+        Button openSelected = button("Abrir arquivo selecionado");
+        openSelected.setOnClickListener(v -> openSelectedFile()); addTop(page, openSelected, 6);
+        status = text("Pronto para selecionar arquivos • sem container", 13, green, false);
+        status.setPadding(0, dp(12), 0, dp(5)); page.addView(status);
+
+        TextView section = text("SEUS CONTAINERS (OPCIONAL)", 13, green, true);
         section.setPadding(0, dp(22), 0, dp(8)); page.addView(section);
         activeLabel = text("", 13, muted, false); page.addView(activeLabel);
         containerList = new LinearLayout(this);
@@ -301,17 +317,92 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.topMargin = dp(margin); parent.addView(view, p);
     }
     private void pickExe() {
-        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT); intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("*/*");
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
         try { startActivityForResult(intent, PICK_EXE); }
         catch (Exception e) { status.setText("Não foi possível abrir o seletor de arquivos."); }
     }
+
+    private String queryDisplayName(Uri uri) {
+        Cursor cursor = null;
+        try {
+            cursor = getContentResolver().query(uri, new String[]{OpenableColumns.DISPLAY_NAME}, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (column >= 0) return cursor.getString(column);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+        String segment = uri.getLastPathSegment();
+        return segment == null ? "Arquivo selecionado" : segment;
+    }
+
+    private String fileKind(String name) {
+        String lower = name.toLowerCase(java.util.Locale.ROOT);
+        if (lower.endsWith(".exe") || lower.endsWith(".msi") || lower.endsWith(".bat") || lower.endsWith(".com"))
+            return "Executável Windows";
+        if (lower.endsWith(".apk")) return "Pacote de aplicativo Android";
+        if (lower.endsWith(".sh")) return "Script shell";
+        if (lower.endsWith(".elf") || lower.endsWith(".so")) return "Binário Linux/Unix";
+        if (lower.endsWith(".zip") || lower.endsWith(".7z") || lower.endsWith(".rar")) return "Arquivo compactado";
+        if (lower.endsWith(".jar")) return "Aplicativo Java";
+        if (lower.endsWith(".pdf")) return "Documento PDF";
+        if (lower.endsWith(".txt") || lower.endsWith(".log")) return "Arquivo de texto/log";
+        if (lower.endsWith(".iso")) return "Imagem de disco";
+        if (lower.endsWith(".obb") || lower.endsWith(".pak") || lower.endsWith(".dat")) return "Dados de jogo";
+        return "Arquivo genérico";
+    }
+
+    private void openSelectedFile() {
+        if (selectedUri == null) {
+            status.setText("Selecione um arquivo primeiro.");
+            return;
+        }
+        String lower = selectedDisplayName.toLowerCase(java.util.Locale.ROOT);
+        if (lower.endsWith(".exe") || lower.endsWith(".msi") || lower.endsWith(".bat") || lower.endsWith(".com")) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Motor Windows necessário")
+                    .setMessage("O arquivo foi selecionado sem precisar criar um container, mas este app ainda não possui Wine/Box64 integrado. O Android não executa arquivos EXE nativamente. Para iniciar este jogo ou programa, primeiro é necessário integrar um motor compatível.")
+                    .setPositiveButton("OK", null).show();
+            status.setText("Arquivo Windows reconhecido; execução indisponível até integrar Wine/Box64.");
+            return;
+        }
+        String mime = getContentResolver().getType(selectedUri);
+        if (mime == null) {
+            if (lower.endsWith(".pdf")) mime = "application/pdf";
+            else if (lower.endsWith(".txt") || lower.endsWith(".log")) mime = "text/plain";
+            else if (lower.endsWith(".apk")) mime = "application/vnd.android.package-archive";
+            else if (lower.endsWith(".zip")) mime = "application/zip";
+            else mime = "*/*";
+        }
+        try {
+            Intent view = new Intent(Intent.ACTION_VIEW);
+            view.setDataAndType(selectedUri, mime);
+            view.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(view, "Abrir arquivo com"));
+            status.setText("Solicitada abertura do arquivo em um app compatível.");
+        } catch (ActivityNotFoundException e) {
+            status.setText("Nenhum aplicativo instalado consegue abrir este tipo de arquivo.");
+            Toast.makeText(this, "Nenhum app compatível encontrado", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            status.setText("Não foi possível abrir este arquivo: " + e.getMessage());
+        }
+    }
+
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_EXE && resultCode == RESULT_OK && data != null) {
             Uri uri = data.getData();
             if (uri != null) {
-                selectedFile.setText("Arquivo escolhido: " + uri.getLastPathSegment());
-                status.setText("Arquivo selecionado. Ainda não pode ser executado nesta versão.");
+                selectedUri = uri;
+                try { getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION); }
+                catch (Exception ignored) { }
+                selectedDisplayName = queryDisplayName(uri);
+                selectedFile.setText("Arquivo: " + selectedDisplayName + "\\nTipo: " + fileKind(selectedDisplayName));
+                status.setText("Selecionado sem container. Toque em Abrir arquivo selecionado para tentar abrir.");
             }
         }
     }
