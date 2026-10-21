@@ -11,12 +11,12 @@ Projeto Android experimental para investigar a execução de software de desktop
   - **Outros:** FreeBSD, ReactOS experimental e FreeDOS.
 - Preferências por container: resolução, orientação, tela cheia, limite de RAM, threads de CPU, perfil Box64, driver gráfico, tradutor DirectX, áudio, controles, limite de FPS, ESYNC, logs, variáveis de ambiente e argumentos de inicialização.
 - Salvar configurações localmente por perfil.
-- Selecionar um arquivo executável pelo seletor do Android.
+- Selecionar arquivos diretamente, sem criar container, e identificar tipos comuns (EXE/MSI, APK, ZIP, JAR, PDF, scripts, binários e dados de jogos).\n- Tentar abrir formatos compatíveis com aplicativos já instalados no Android.\n- Manter o acesso ao arquivo escolhido usando a permissão concedida pelo seletor do Android.
 - GitHub Actions para compilar APK de depuração.
 
 ## Limitação importante
 
-**A lista de sistemas operacionais é, por enquanto, uma seleção de perfil na interface.** O aplicativo ainda não baixa nem instala imagens de Windows, distribuições Linux ou outros sistemas. Também não cria containers reais, não inicia máquinas virtuais e não executa EXE/ELF: o motor de compatibilidade/virtualização ainda precisa ser integrado.
+**A lista de sistemas operacionais é, por enquanto, uma seleção de perfil na interface. A abertura direta não executa arquivos Windows.** O aplicativo ainda não baixa nem instala imagens de Windows, distribuições Linux ou outros sistemas. Também não cria containers reais, não inicia máquinas virtuais e não executa EXE/ELF. A tela de arquivos permite selecionar um arquivo sem container e delegar formatos reconhecidos a outro aplicativo Android; EXE/MSI e outros executáveis Windows são identificados, mas mostram um aviso porque o motor de compatibilidade/virtualização ainda precisa ser integrado.
 
 Windows em ARM/PC x86, Linux ARM/x86, BSD e DOS têm requisitos diferentes. O caminho mais adequado pode ser Wine + camada de tradução para programas Windows, um ambiente Linux user-space como proot para ferramentas Linux, ou virtualização real quando houver suporte de hardware e desempenho suficiente. A seleção de um nome não instala automaticamente esse sistema.
 
