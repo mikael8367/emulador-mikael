@@ -23,7 +23,7 @@ O script deve configurar o seu runtime de forma independente, iniciar o programa
 
 ## Estado e limitações
 
-- O importador valida o caminho ZIP e exige `start-wine.sh`; isso **não valida** a integridade, a arquitetura ou o funcionamento de Wine/Box64.
+- O importador valida o caminho ZIP e exige `start-wine.sh`; isso **não valida** a integridade, a arquitetura ou o funcionamento de Wine/Box64.\n- A extração atual não preserva permissões POSIX, links simbólicos, hard links ou ownership de Linux. Por isso, uma rootfs Linux convencional pode não funcionar ao ser importada neste formato; ainda falta um instalador de runtime capaz de montar corretamente esses componentes.
 - Este repositório ainda não fornece um pacote de runtime funcional. Não use um script de exemplo como se fosse Wine.
 - O app chama o script se o pacote estiver presente, mas o status “processo iniciado” não garante que o jogo abriu. Consulte `files/windows-engine.log` para diagnóstico.
 - Não há garantia de compatibilidade com jogos x86/x64, DirectX, DRM, anti-cheat, Vulkan ou drivers gráficos.
