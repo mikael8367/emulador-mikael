@@ -223,18 +223,18 @@ public class MainActivity extends Activity {
     }
 
     private void openFullEngine() {
-        Intent launch = getPackageManager().getLaunchIntentForPackage("br.com.mikael.emulador.motor");
-        if (launch != null) {
-            startActivity(launch);
-            return;
+        try {
+            // Winlator is packaged inside this same APK by the combined build workflow.
+            startActivity(new Intent(this, Class.forName("com.winlator.MainActivity")));
+        } catch (Exception e) {
+            new AlertDialog.Builder(this)
+                    .setTitle("Motor integrado indisponível")
+                    .setMessage("Esta compilação não contém a atividade do motor Winlator. Instale o APK combinado gerado pelo workflow “Build single combined APK”.")
+                    .setPositiveButton("Ver compilação", (d, w) -> startActivity(new Intent(Intent.ACTION_VIEW,
+                            Uri.parse("https://github.com/mikael8367/emulador-mikael/actions/workflows/winlator-base.yml"))))
+                    .setNegativeButton("Fechar", null)
+                    .show();
         }
-        new AlertDialog.Builder(this)
-                .setTitle("Motor completo não instalado")
-                .setMessage("Instale o APK “Emulador Mikael - Motor” gerado pelo workflow do Winlator. Ao abrir pela primeira vez, conecte à internet e aguarde a instalação dos componentes; reserve espaço livre suficiente. A compatibilidade gráfica no seu aparelho PowerVR não é garantida.")
-                .setPositiveButton("Ver builds do motor", (d, w) -> startActivity(new Intent(Intent.ACTION_VIEW,
-                        Uri.parse("https://github.com/mikael8367/emulador-mikael/actions/workflows/winlator-base.yml"))))
-                .setNegativeButton("Cancelar", null)
-                .show();
     }
 
     private void buildContainersTab() {
@@ -252,7 +252,7 @@ public class MainActivity extends Activity {
 
     private void buildEnginesTab() {
         page.addView(text("Motores de execução", 22, Color.WHITE, true));
-        page.addView(text("O motor completo usa a base do Winlator para instalar e preparar Wine, Box64/Box86, rootfs e componentes gráficos compatíveis. O motor é um APK separado nesta etapa.", 13, muted, false));
+        page.addView(text("O motor Winlator está integrado neste mesmo APK. Abra o motor para configurar o ambiente Windows, instalar os componentes e iniciar programas compatíveis.", 13, muted, false));
         Button openFullEngine = button("▶ Abrir motor completo");
         openFullEngine.setOnClickListener(v -> openFullEngine());
         addTop(page, openFullEngine, 12);
@@ -280,7 +280,7 @@ public class MainActivity extends Activity {
                 .setTitle("Motores e componentes")
                 .setMessage("Wine fornece a camada de compatibilidade Windows. Box64/Box86 podem traduzir aplicações x86/x64, com bibliotecas e rootfs compatíveis. Gráficos, áudio e entrada precisam de integração nativa. Nem todos os jogos funcionam.\n\nO Galaxy A12 usa GPU PowerVR; drivers específicos de Adreno, como Turnip, não são universais. O pacote importado pelo app é apenas uma ponte experimental e não equivale ao runtime completo do Winlator.")
                 .setPositiveButton("Entendi", null).show()); addTop(page, showEngineGuide, 8);
-        TextView warning = text("STATUS: integração em andamento\nNão considere o motor funcional até a compilação e a execução serem testadas no aparelho.", 13, Color.rgb(255, 220, 145), false);
+        TextView warning = text("APK combinado: interface Mikael + motor Winlator no mesmo aplicativo. Compatibilidade e execução real precisam ser testadas no aparelho.", 13, Color.rgb(255, 220, 145), false);
         warning.setPadding(dp(13), dp(13), dp(13), dp(13));
         warning.setBackgroundColor(Color.rgb(48, 39, 22)); addTop(page, warning, 14);
         refreshRuntimeStatus();
