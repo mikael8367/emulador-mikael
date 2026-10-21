@@ -50,6 +50,19 @@ jobs:
           sed -i "s|applicationId 'com.winlator'|applicationId 'br.com.mikael.emulador'|" "$APP/app/build.gradle"
           sed -i 's|<string name="app_name">Winlator</string>|<string name="app_name">Emulador Mikael</string>|' "$APP/app/src/main/res/values/strings.xml"
 
+          # Replace upstream launcher artwork with a custom Mikael icon.
+          mkdir -p "$APP/app/src/main/res/drawable"
+          cat > "$APP/app/src/main/res/drawable/mikael_launcher_icon.xml" <<'XML'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp" android:height="108dp"
+              android:viewportWidth="108" android:viewportHeight="108">
+              <path android:fillColor="#09150C" android:pathData="M0,0h108v108h-108z"/>
+              <path android:fillColor="#164B2D" android:pathData="M54,7 L95,30 L95,78 L54,101 L13,78 L13,30 Z"/>
+              <path android:fillColor="#46E687" android:pathData="M27,75 L27,34 L39,34 L54,54 L69,34 L81,34 L81,75 L69,75 L69,52 L54,71 L39,52 L39,75 Z"/>
+              <path android:fillColor="#FFFFFF" android:pathData="M47,24 L54,15 L61,24 L54,31 Z"/>
+          </vector>
+          XML
+
           python3 - <<'PY'
           import xml.etree.ElementTree as ET
           path = "upstream-winlator/app/app/src/main/AndroidManifest.xml"
@@ -60,7 +73,10 @@ jobs:
           app = root.find("application")
           if app is None:
               raise SystemExit("Manifesto sem elemento application")
-          # Keep Winlator's native activity available, but make Mikael's custom UI the launcher.
+          app.set(android + "label", "Emulador Mikael")
+          app.set(android + "icon", "@drawable/mikael_launcher_icon")
+          app.set(android + "roundIcon", "@drawable/mikael_launcher_icon")
+          # Keep the runtime activity available, but make Mikael's custom UI the launcher.
           for activity in app.findall("activity"):
               if activity.get(android + "name") == "com.winlator.MainActivity":
                   for intent in list(activity.findall("intent-filter")):
