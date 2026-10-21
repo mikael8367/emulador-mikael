@@ -357,9 +357,9 @@ public class MainActivity extends Activity {
             try {
                 if (!stage.mkdirs() && !stage.isDirectory()) throw new IOException("Não foi possível criar a pasta temporária.");
                 long total = 0;
-                try (InputStream raw = getContentResolver().openInputStream(uri);
-                     ZipInputStream zip = new ZipInputStream(raw)) {
-                    if (raw == null) throw new IOException("Não foi possível ler o ZIP.");
+                InputStream raw = getContentResolver().openInputStream(uri);
+                if (raw == null) throw new IOException("Não foi possível ler o ZIP.");
+                try (InputStream source = raw; ZipInputStream zip = new ZipInputStream(source)) {
                     ZipEntry entry;
                     byte[] buffer = new byte[32768];
                     String root = stage.getCanonicalPath() + File.separator;
