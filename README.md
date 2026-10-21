@@ -2,21 +2,28 @@
 
 Projeto Android experimental para investigar a compatibilidade de jogos Windows no Android, com foco inicial no LAVOICE.
 
-## O que já existe
+## Recursos da interface
 
-- Interface Android verde/preta em Java.
-- Lista de perfis de container.
-- Criar, selecionar, editar e excluir containers (mantém pelo menos um).
-- Preferências por container: nome, resolução, perfil Box64 e modo gráfico.
-- Perfis salvos localmente no aplicativo.
+- Criar, selecionar, editar e excluir perfis de container.
+- Salvar configurações separadas para cada perfil.
+- Preferência de versão do Windows (XP legado, 7, 10 ou 11).
+- Resolução, orientação e tela cheia.
+- Limite de RAM e quantidade de threads de CPU como preferências.
+- Perfil Box64 e driver gráfico.
+- Opção de tradutor DirectX (DXVK, WineD3D ou VKD3D-Proton).
+- Preferências de áudio, controles, limite de FPS e ponteiro do mouse.
+- Opções de ESYNC e logs de depuração.
+- Campo para variáveis de ambiente e argumentos de inicialização.
 - Seletor de arquivos para localizar um executável.
-- GitHub Actions para compilar um APK de depuração.
+- GitHub Actions para compilar APK de depuração.
 
 ## Limitação importante
 
-**Os containers atuais são perfis de configuração da interface; ainda não são ambientes Windows reais.** Eles não criam prefixos Wine, não instalam Wine/Box64 e não executam arquivos .exe. As opções de resolução, perfil Box64 e gráficos são armazenadas para a futura integração do motor, mas ainda não alteram a execução.
+**Esses containers ainda são perfis de configuração, não ambientes Windows reais.** As configurações são armazenadas localmente, mas ainda não afetam a execução porque o motor Wine/Box64 e as camadas gráficas ainda não foram integrados. Selecionar um EXE não o executa.
 
-A compatibilidade depende da arquitetura do programa, APIs do Windows, bibliotecas e suporte gráfico. O dispositivo inicial de teste é um Samsung Galaxy A12 com Android 12 e GPU PowerVR, então não há garantia de que o LAVOICE ou qualquer outro EXE funcione nele.
+Opções como Turnip dependem de hardware e drivers compatíveis; não são aceleradores universais. RAM, CPU, DirectX e FPS também precisam ser ligados ao motor real e não podem ser garantidos pela interface.
+
+O alvo inicial de teste é um Samsung Galaxy A12 com Android 12 e GPU PowerVR. A compatibilidade com LAVOICE ou qualquer outro EXE precisa ser verificada na prática.
 
 ## Construir APK de teste
 
@@ -30,9 +37,9 @@ O workflow compila a interface Android; isso não significa que o motor Windows 
 ## Próximas etapas
 
 1. Compilar e testar a interface no dispositivo Android.
-2. Integrar e empacotar um motor de compatibilidade Wine e uma camada de tradução x86_64 adequada para ARM64.
-3. Implementar a criação real e isolada dos ambientes Windows, armazenamento, instalação de componentes e execução.
-4. Testar o LAVOICE e registrar resultados reais de compatibilidade e desempenho.
+2. Integrar um motor de compatibilidade Windows adequado a Android/ARM64.
+3. Implementar containers reais isolados, gerenciamento de arquivos e instalação de dependências.
+4. Conectar cada preferência ao motor e validar o LAVOICE com testes reais.
 
 ## Segurança
 
