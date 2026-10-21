@@ -1,4 +1,4 @@
-name: Build Winlator engine APK
+name: Build single combined APK
 
 on:
   push:
@@ -10,13 +10,13 @@ permissions:
   contents: read
 
 jobs:
-  build-engine:
+  build-combined:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Emulador Mikael
+      - name: Checkout Emulador Mikael UI
         uses: actions/checkout@v4
 
-      - name: Checkout full Winlator source and components
+      - name: Checkout Winlator engine and native components
         uses: actions/checkout@v4
         with:
           repository: brunodev85/winlator
@@ -39,35 +39,74 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Brand engine APK
-        working-directory: upstream-winlator/app
+      - name: Combine Mikael UI and Winlator in one app
+        shell: bash
         run: |
-          sed -i "s|applicationId 'com.winlator'|applicationId 'br.com.mikael.emulador.motor'|" app/build.gradle
-          sed -i 's|<string name="app_name">Winlator</string>|<string name="app_name">Emulador Mikael - Motor</string>|' app/src/main/res/values/strings.xml
-          grep -q 'br.com.mikael.emulador.motor' app/build.gradle
-          grep -q 'Emulador Mikael - Motor' app/src/main/res/values/strings.xml
+          set -euo pipefail
+          APP="upstream-winlator/app"
+          mkdir -p "$APP/app/src/main/java/br/com/mikael/emulador"
+          cp app/src/main/java/br/com/mikael/emulador/MainActivity.java "$APP/app/src/main/java/br/com/mikael/emulador/MainActivity.java"
 
-      - name: Build real Winlator engine
+          sed -i "s|applicationId 'com.winlator'|applicationId 'br.com.mikael.emulador'|" "$APP/app/build.gradle"
+          sed -i 's|<string name="app_name">Winlator</string>|<string name="app_name">Emulador Mikael</string>|' "$APP/app/src/main/res/values/strings.xml"
+
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          path = "upstream-winlator/app/app/src/main/AndroidManifest.xml"
+          ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
+          android = "{http://schemas.android.com/apk/res/android}"
+          tree = ET.parse(path)
+          root = tree.getroot()
+          app = root.find("application")
+          if app is None:
+              raise SystemExit("Manifesto sem elemento application")
+          # Keep Winlator's native activity available, but make Mikael's custom UI the launcher.
+          for activity in app.findall("activity"):
+              if activity.get(android + "name") == "com.winlator.MainActivity":
+                  for intent in list(activity.findall("intent-filter")):
+                      if any((node.get(android + "name") == "android.intent.action.MAIN") for node in intent.findall("action")):
+                          activity.remove(intent)
+          if not any(a.get(android + "name") == "br.com.mikael.emulador.MainActivity" for a in app.findall("activity")):
+              activity = ET.SubElement(app, "activity", {
+                  android + "name": "br.com.mikael.emulador.MainActivity",
+                  android + "exported": "true",
+                  android + "theme": "@style/AppThemeDark",
+                  android + "screenOrientation": "sensor",
+                  android + "configChanges": "keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+              })
+              intent = ET.SubElement(activity, "intent-filter")
+              ET.SubElement(intent, "action", {android + "name": "android.intent.action.MAIN"})
+              ET.SubElement(intent, "category", {android + "name": "android.intent.category.LAUNCHER"})
+          tree.write(path, encoding="utf-8", xml_declaration=True)
+          PY
+          grep -q "br.com.mikael.emulador.MainActivity" "$APP/app/src/main/AndroidManifest.xml"
+          grep -q "br.com.mikael.emulador" "$APP/app/build.gradle"
+
+      - name: Build one combined APK
         working-directory: upstream-winlator/app
         run: ./gradlew --no-daemon assembleDebug
 
-      - name: Prepare license and source notes
+      - name: Prepare single APK artifact
         run: |
+          set -euo pipefail
           mkdir -p dist
           cp upstream-winlator/LICENSE dist/WINLATOR-LICENSE
-          cat > dist/ENGINE-INFO.txt <<'EOF'
-          Emulador Mikael - Motor
-          This APK is based on the Winlator open-source Android project.
-          Upstream source: https://github.com/brunodev85/winlator
-          License: LGPL-2.1. Review the upstream license and source before redistribution.
-          The engine's first-run component setup requires internet and enough free storage.
-          Hardware/GPU compatibility is not guaranteed; this target device uses a PowerVR GPU.
+          cp upstream-winlator/app/app/build/outputs/apk/debug/app-debug.apk dist/Emulador-Mikael-completo.apk
+          cat > dist/BUILD-INFO.txt <<'EOF'
+          Emulador Mikael - APK combinado
+          Inclui a interface personalizada Mikael e o motor baseado no projeto Winlator.
+          Upstream: https://github.com/brunodev85/winlator
+          Licença do Winlator: LGPL-2.1; consulte WINLATOR-LICENSE.
+          Primeiro uso: internet e armazenamento livre podem ser necessários para baixar/preparar componentes.
+          Compatibilidade não é garantida para todo EXE/jogo ou GPU. Teste no dispositivo-alvo.
           EOF
-          cp upstream-winlator/app/app/build/outputs/apk/debug/app-debug.apk dist/Emulador-Mikael-Motor-debug.apk
 
-      - name: Upload engine APK
+      - name: Upload single combined APK
         uses: actions/upload-artifact@v4
         with:
-          name: emulador-mikael-winlator-engine-apk
-          path: dist/*
+          name: emulador-mikael-completo-apk
+          path: |
+            dist/Emulador-Mikael-completo.apk
+            dist/WINLATOR-LICENSE
+            dist/BUILD-INFO.txt
           if-no-files-found: error
