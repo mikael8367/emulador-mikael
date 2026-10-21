@@ -42,7 +42,7 @@ jobs:
       - name: Brand engine APK
         working-directory: upstream-winlator/app
         run: |
-          sed -i 's/applicationId "com.winlator"/applicationId "br.com.mikael.emulador.motor"/' app/build.gradle
+          sed -i "s|applicationId 'com.winlator'|applicationId 'br.com.mikael.emulador.motor'|" app/build.gradle
           sed -i 's|<string name="app_name">Winlator</string>|<string name="app_name">Emulador Mikael - Motor</string>|' app/src/main/res/values/strings.xml
           grep -q 'br.com.mikael.emulador.motor' app/build.gradle
           grep -q 'Emulador Mikael - Motor' app/src/main/res/values/strings.xml
